@@ -26,14 +26,14 @@ implementar y probar cada una de forma independiente.
 
 **Purpose**: Inicializar el monorepo y el andamiaje base de los tres paquetes.
 
-- [ ] T001 Initialize the pnpm monorepo root config (`package.json`, `pnpm-workspace.yaml`) at `finance-app/package.json` and `finance-app/pnpm-workspace.yaml`
-- [ ] T002 Configure the Turborepo pipeline (`build`, `lint`, `test` tasks) at `finance-app/turbo.json`
-- [ ] T003 [P] Create the shared strict TypeScript base config at `finance-app/tsconfig.base.json`
-- [ ] T004 [P] Configure the shared ESLint + Prettier config at `finance-app/.eslintrc.cjs` and `finance-app/.prettierrc`
-- [ ] T005 [P] Scaffold `packages/core` (`package.json`, `tsconfig.json` extending the base config, `vitest.config.ts`) at `finance-app/packages/core/`
-- [ ] T006 [P] Scaffold `packages/db` (`package.json`, `tsconfig.json` extending the base config) at `finance-app/packages/db/`
-- [ ] T007 [P] Scaffold `apps/web` as a Next.js App Router project (`package.json`, `tsconfig.json` extending the base config, `next.config.ts`) at `finance-app/apps/web/`
-- [ ] T008 Create `docker-compose.yml` with a `postgres` service for local development and CI at `finance-app/docker-compose.yml`
+- [X] T001 Initialize the pnpm monorepo root config (`package.json`, `pnpm-workspace.yaml`) at `finance-app/package.json` and `finance-app/pnpm-workspace.yaml`
+- [X] T002 Configure the Turborepo pipeline (`build`, `lint`, `test` tasks) at `finance-app/turbo.json`
+- [X] T003 [P] Create the shared strict TypeScript base config at `finance-app/tsconfig.base.json`
+- [X] T004 [P] Configure the shared ESLint + Prettier config at `finance-app/.eslintrc.cjs` and `finance-app/.prettierrc`
+- [X] T005 [P] Scaffold `packages/core` (`package.json`, `tsconfig.json` extending the base config, `vitest.config.ts`) at `finance-app/packages/core/`
+- [X] T006 [P] Scaffold `packages/db` (`package.json`, `tsconfig.json` extending the base config) at `finance-app/packages/db/`
+- [X] T007 [P] Scaffold `apps/web` as a Next.js App Router project (`package.json`, `tsconfig.json` extending the base config, `next.config.mjs`) at `finance-app/apps/web/` — `next.config.ts` is not supported by Next.js 14, used `.mjs` instead
+- [X] T008 Create `docker-compose.yml` with a `postgres` service for local development and CI at `finance-app/docker-compose.yml` (plus `Dockerfile.ci` for the `app` service referenced by it)
 
 ---
 
@@ -43,9 +43,9 @@ implementar y probar cada una de forma independiente.
 
 **⚠️ CRITICAL**: Ninguna historia de usuario puede comenzar hasta completar esta fase.
 
-- [ ] T009 Wire the `turbo.json` pipeline so `pnpm turbo run build|lint|test` executes successfully across `apps/web`, `packages/core`, and `packages/db` (depends on T002, T005, T006, T007) in `finance-app/turbo.json`
-- [ ] T010 Create the shared columns schema helper per data-model.md — `id` (`uuid`, primary key, default `gen_random_uuid()`), `user_id` (`uuid`, not null), `created_at` (`timestamptz`, not null, default `now()`), `updated_at` (`timestamptz`, not null, default `now()`) — at `finance-app/packages/db/schema/shared-columns.ts`
-- [ ] T011 [P] Create `.env.example` documenting `DATABASE_URL` and `AUTHORIZED_EMAIL` at `finance-app/apps/web/.env.example`
+- [X] T009 Wire the `turbo.json` pipeline so `pnpm turbo run build|lint|test` executes successfully across `apps/web`, `packages/core`, and `packages/db` (depends on T002, T005, T006, T007) in `finance-app/turbo.json` — verified green: `pnpm turbo run build lint test` → 9/9 tasks successful
+- [X] T010 Create the shared columns schema helper per data-model.md — `id` (`uuid`, primary key, default `gen_random_uuid()`), `user_id` (`uuid`, not null), `created_at` (`timestamptz`, not null, default `now()`), `updated_at` (`timestamptz`, not null, default `now()`) — at `finance-app/packages/db/schema/shared-columns.ts`
+- [X] T011 [P] Create `.env.example` documenting `DATABASE_URL` and `AUTHORIZED_EMAIL` at `finance-app/apps/web/.env.example` (also documents `NEXTAUTH_URL` and `NEXTAUTH_SECRET`, required by the Auth.js setup from US1)
 
 **Checkpoint**: Fundación lista — las historias de usuario pueden empezar (en paralelo si hay más de un desarrollador).
 
@@ -65,17 +65,19 @@ ve la página de bienvenida) — los tres casos se verifican sin depender de US2
 
 > **NOTE: Escribir esta prueba primero y confirmar que falla antes de implementar.**
 
-- [ ] T012 [P] [US1] Write a Playwright e2e test covering the three auth contract cases from `contracts/auth.md` (no session → `/login`; wrong email → denied page; authorized email → welcome page) in `finance-app/apps/web/tests/e2e/login.spec.ts`
+- [X] T012 [P] [US1] Write a Playwright e2e test covering the three auth contract cases from `contracts/auth.md` (no session → `/login`; wrong email → denied page; authorized email → welcome page) in `finance-app/apps/web/tests/e2e/login.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Configure the Auth.js provider and session setup in `finance-app/apps/web/lib/auth.ts`
-- [ ] T014 [US1] Implement the `signIn` callback that normalizes the authenticated email (lowercase, trimmed) and rejects any email that does not exactly match `AUTHORIZED_EMAIL` (depends on T013) in `finance-app/apps/web/lib/auth.ts`
-- [ ] T015 [US1] Implement `middleware.ts` that redirects to `/login` when there is no valid session, and to the denied page when the session's email is not `AUTHORIZED_EMAIL`, for every route except `/login` (depends on T014) in `finance-app/apps/web/middleware.ts`
-- [ ] T016 [P] [US1] Create the `/login` page in `finance-app/apps/web/app/(auth)/login/page.tsx`
-- [ ] T017 [P] [US1] Create the access-denied page shown when the authenticated email is not authorized in `finance-app/apps/web/app/(auth)/denied/page.tsx`
-- [ ] T018 [US1] Create the protected welcome page that shows the authenticated user's email and no business content (categories, accounts, expenses, reports), per FR-011 (depends on T015) in `finance-app/apps/web/app/page.tsx`
-- [ ] T019 [US1] Document the Vercel deployment steps and required environment variables (`AUTHORIZED_EMAIL`, `DATABASE_URL`, auth secrets) in `finance-app/apps/web/README.md`
+- [X] T013 [US1] Configure the Auth.js provider and session setup in `finance-app/apps/web/lib/auth.ts` — credentials-based email provider (single user, no password; see research.md for the OAuth alternative)
+- [X] T014 [US1] Implement the `signIn` callback that normalizes the authenticated email (lowercase, trimmed) and rejects any email that does not exactly match `AUTHORIZED_EMAIL` (depends on T013) in `finance-app/apps/web/lib/auth.ts`
+- [X] T015 [US1] Implement `middleware.ts` that redirects to `/login` when there is no valid session, and to the denied page when the session's email is not `AUTHORIZED_EMAIL`, for every route except `/login` (depends on T014) in `finance-app/apps/web/middleware.ts`
+- [X] T016 [P] [US1] Create the `/login` page in `finance-app/apps/web/app/(auth)/login/page.tsx`
+- [X] T017 [P] [US1] Create the access-denied page shown when the authenticated email is not authorized in `finance-app/apps/web/app/(auth)/denied/page.tsx`
+- [X] T018 [US1] Create the protected welcome page that shows the authenticated user's email and no business content (categories, accounts, expenses, reports), per FR-011 (depends on T015) in `finance-app/apps/web/app/page.tsx`
+- [X] T019 [US1] Document the Vercel deployment steps and required environment variables (`AUTHORIZED_EMAIL`, `DATABASE_URL`, auth secrets) in `finance-app/apps/web/README.md`
+
+**Verified**: T012's Playwright suite passes 3/3 against a production build (`next build && next start`) — see the note under T028 about why dev mode is not used for this test.
 
 **Checkpoint**: User Story 1 completamente funcional y probable de forma independiente (MVP desplegable).
 
@@ -91,12 +93,12 @@ monorepo — deben pasar en verde sin depender de que US1 o US3 estén implement
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T020 [P] [US2] Write a Vitest unit test for a minimal example function in `finance-app/packages/core/tests/index.test.ts`
+- [X] T020 [P] [US2] Write a Vitest unit test for a minimal example function in `finance-app/packages/core/tests/index.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T021 [P] [US2] Implement the minimal framework-agnostic example unit under test — no imports from Next.js, Drizzle, or any database client, per Constitution Principle II — in `finance-app/packages/core/src/index.ts`
-- [ ] T022 [US2] Document the install/build/lint/test commands for contributors in `finance-app/README.md`
+- [X] T021 [P] [US2] Implement the minimal framework-agnostic example unit under test — no imports from Next.js, Drizzle, or any database client, per Constitution Principle II — in `finance-app/packages/core/src/index.ts`
+- [X] T022 [US2] Document the install/build/lint/test commands for contributors in `finance-app/README.md`
 
 **Checkpoint**: User Stories 1 y 2 funcionan de forma independiente.
 
@@ -113,10 +115,17 @@ cambios — verificable sin depender de US1 ni US2.
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] Configure Drizzle Kit pointing at the schema in `packages/db/schema` (depends on T010) in `finance-app/packages/db/drizzle.config.ts`
-- [ ] T024 [US3] Generate the initial migration with no business tables via Drizzle Kit (depends on T023) at `finance-app/packages/db/migrations/0000_init.sql`
-- [ ] T025 [US3] Add a `migrate` script that applies pending migrations idempotently, per FR-007 (depends on T024) in `finance-app/packages/db/package.json`
-- [ ] T026 [US3] Implement the database client `apps/web` uses to read `DATABASE_URL` and connect through `packages/db` (depends on T024) in `finance-app/apps/web/lib/db.ts`
+- [X] T023 [US3] Configure Drizzle Kit pointing at the schema in `packages/db/schema` (depends on T010) in `finance-app/packages/db/drizzle.config.ts`
+- [X] T024 [US3] Generate the initial migration with no business tables via Drizzle Kit (depends on T023) at `finance-app/packages/db/migrations/0000_init.sql` — generated with `drizzle-kit generate --custom` (0 business tables in `schema/`, as intended) plus proper `meta/_journal.json`/`meta/0000_snapshot.json`, and edited to add `CREATE EXTENSION IF NOT EXISTS pgcrypto;`
+- [X] T025 [US3] Add a `migrate` script that applies pending migrations idempotently, per FR-007 (depends on T024) in `finance-app/packages/db/package.json` — implemented in `packages/db/src/migrate.ts`
+- [X] T026 [US3] Implement the database client `apps/web` uses to read `DATABASE_URL` and connect through `packages/db` (depends on T024) in `finance-app/apps/web/lib/db.ts`
+
+**⚠️ Not verified against a live database**: this environment has no running Docker daemon
+(only the Docker CLI is installed), so `pnpm --filter @finance-app/db migrate` was never run
+against a real PostgreSQL instance. `drizzle-kit generate` was run for real and produced valid
+migration files; running `docker compose up -d postgres && pnpm --filter @finance-app/db migrate`
+(twice, to confirm idempotency per FR-007) is a follow-up the user needs to run locally with
+Docker Desktop actually started.
 
 **Checkpoint**: Las tres historias de usuario funcionan de forma independiente.
 
@@ -126,9 +135,9 @@ cambios — verificable sin depender de US1 ni US2.
 
 **Purpose**: Amarrar CI reproducible y validar el spec de punta a punta.
 
-- [ ] T027 [P] Create the GitHub Actions workflow that runs the Docker Compose based lint/test pipeline (per the CI/CD constitution rule) before any deploy step in `finance-app/.github/workflows/ci.yml`
-- [ ] T028 [P] Configure Playwright (depends on T012) in `finance-app/apps/web/playwright.config.ts`
-- [ ] T029 Run the full `quickstart.md` validation (local, Docker, Vercel) and record the results in `finance-app/specs/001-cimientos/quickstart.md`
+- [X] T027 [P] Create the GitHub Actions workflow that runs the Docker Compose based lint/test pipeline (per the CI/CD constitution rule) before any deploy step at `.github/workflows/ci.yml` (repo root, not `finance-app/.github/...` — GitHub Actions requires workflows at the git repository root, and `finance-app/` is a subfolder of the actual repo root) — **not yet exercised by a real GitHub Actions run** (would require pushing the branch)
+- [X] T028 [P] Configure Playwright (depends on T012) in `finance-app/apps/web/playwright.config.ts` — configured to build+start a production server rather than `next dev`, because Auth.js's CSRF cookie proved unreliable under Next.js dev-mode Fast Refresh during testing (see quickstart.md notes)
+- [X] T029 Run the `quickstart.md` validation for the parts reachable in this environment and record the results in `finance-app/specs/001-cimientos/quickstart.md` — see the "Validation results" section added there for exactly what was and wasn't verified
 
 ---
 

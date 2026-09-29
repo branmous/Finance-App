@@ -4,6 +4,16 @@
 /build
 /tmp
 
+# Monorepo (finance-app)
+**/node_modules
+**/dist
+**/.next/
+**/coverage/
+**/.turbo/
+finance-app/apps/web/playwright-report/
+finance-app/apps/web/test-results/
+.env*.local
+
 # Logs
 logs
 *.log

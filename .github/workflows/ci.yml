@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: finance-app
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build CI image and run lint + test via Docker Compose
+        run: |
+          docker compose build app
+          docker compose up -d postgres
+          docker compose run --rm app

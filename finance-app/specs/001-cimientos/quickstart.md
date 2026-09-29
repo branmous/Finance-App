@@ -59,6 +59,12 @@ Casos a verificar (ver `contracts/auth.md`):
 
 **Resultado esperado**: los tres casos se cumplen (SC-002, SC-003).
 
+> Nota de implementacion: la cookie CSRF de Auth.js resulto poco confiable bajo Fast Refresh
+> de `next dev` (peticiones ocasionalmente rechazadas antes de llegar al callback de `signIn`).
+> Por eso `playwright.config.ts` levanta el servidor con `next build && next start` en vez de
+> `next dev` para correr `test:e2e`, igual que correra en CI. `pnpm --filter apps/web dev`
+> sigue siendo valido para desarrollo manual normal.
+
 ## 5. Validar en producción (Vercel)
 
 1. Desplegar `apps/web` a Vercel con `DATABASE_URL` y `AUTHORIZED_EMAIL` configuradas como
@@ -67,3 +73,19 @@ Casos a verificar (ver `contracts/auth.md`):
 
 **Resultado esperado**: mismo comportamiento que en local, confirmando FR-008 y FR-012 (el
 "cimientos listo" es verificable de punta a punta por alguien externo al autor).
+
+## Resultados de validación (2026-09-29)
+
+Ejecutado durante la implementación, en un entorno sin daemon de Docker corriendo (solo el CLI
+instalado) y sin cuenta de Vercel conectada:
+
+| Paso | Resultado |
+| --- | --- |
+| 1. Migración inicial | ⚠️ No verificado contra una base de datos real (sin Docker daemon). `drizzle-kit generate` sí se ejecutó y produjo `migrations/0000_init.sql` + metadata válida. |
+| 2. Build / lint / test del monorepo | ✅ `pnpm turbo run build lint test` → 9/9 tareas en verde (apps/web, packages/core, packages/db). |
+| 3. Pipeline vía Docker | ⚠️ No verificado (sin Docker daemon disponible en este entorno). `docker-compose.yml` y `Dockerfile.ci` están escritos pero no ejecutados. |
+| 4. Flujo de login (Playwright) | ✅ Los 3 casos del contrato de auth pasan de forma consistente (3/3, en 3 corridas seguidas) contra `next build && next start`. |
+| 5. Validación en Vercel | ⚠️ No ejecutado — requiere una cuenta/proyecto de Vercel real, fuera del alcance de este entorno de implementación. |
+
+**Pendiente para el usuario**: con Docker Desktop corriendo, ejecutar el paso 1 y el paso 3;
+y desplegar `apps/web` a Vercel para completar el paso 5 y cerrar FR-012 de punta a punta.

@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: finance_app
+      POSTGRES_PASSWORD: finance_app
+      POSTGRES_DB: finance_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.ci
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    environment:
+      DATABASE_URL: postgres://finance_app:finance_app@postgres:5432/finance_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
