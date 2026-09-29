@@ -1,17 +1,15 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.0 → 1.2.0 (MINOR: new governance rule added)
+- Version change: 1.2.0 → 1.3.0 (MINOR: new core principle added)
 - Modified principles: none
 - Added sections:
-  - Flujo de Desarrollo Guiado por Specs (SDD): nueva regla de branching — cada spec
-    `specs/NNN-nombre/` DEBE trabajarse en su propia rama `feature/NNN-nombre`
+  - Core Principles: VI. Código en Inglés — todo identificador, nombre de archivo, tabla,
+    columna, mensaje de commit y comentario de código DEBE escribirse en inglés; los
+    documentos de producto (specs, planes, constitución) pueden permanecer en español
 - Removed sections: none
 - Templates requiring updates:
   - .specify/templates/plan-template.md ⚠ pending manual check (not reviewed in this run)
-  - .specify/templates/spec-template.md ⚠ pending manual check (not reviewed in this run)
-  - .claude/skills/speckit-specify/SKILL.md ⚠ el hook antes de crear el spec no crea rama
-    automáticamente en esta instalación (no hay .specify/extensions.yml); la rama
-    feature/NNN-nombre se crea manualmente hasta configurar un hook before_specify
+  - .specify/templates/tasks-template.md ⚠ pending manual check (not reviewed in this run)
 - Follow-up TODOs: none
 -->
 
@@ -65,6 +63,17 @@ innegociables:
   historial ya generado no se reescribe.
 - Los reportes se calculan desde `transactions` (lo real ya ejecutado) y desde
   `bill_occurrences` (lo pendiente), nunca desde la plantilla directamente.
+
+### VI. Código en Inglés
+Todo artefacto de código — nombres de variables, funciones, métodos, clases, tipos,
+interfaces, archivos, tablas y columnas de base de datos, mensajes de commit y comentarios
+en el código — DEBE escribirse en inglés, incluso aunque el dominio del negocio (gastos,
+ingresos, cuentas) sea en español. Los documentos de producto (esta constitución, los specs,
+planes y tareas en `specs/`, y la guía del proyecto) SÍ pueden permanecer en español, porque
+están dirigidos al único usuario/dueño del proyecto. Esta separación evita mezclar dos
+idiomas dentro del mismo código fuente (p. ej. `montoEstimado` junto a `dueDate`), lo cual
+dificulta la lectura y el mantenimiento, y mantiene el código consistente con el ecosistema
+de librerías (TypeScript, Next.js, Drizzle) con el que convive.
 
 ## Modelo de Datos y Multiusuario
 
@@ -132,4 +141,4 @@ innegociables:
 - La complejidad no justificada (nuevas dependencias, capas o abstracciones que no sirven
   al MVP) DEBE cuestionarse en la revisión del Plan antes de implementarse.
 
-**Version**: 1.2.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-29
+**Version**: 1.3.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-29
