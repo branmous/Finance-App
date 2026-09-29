@@ -1,15 +1,17 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0 (MINOR: new governance section added)
+- Version change: 1.1.0 → 1.2.0 (MINOR: new governance rule added)
 - Modified principles: none
 - Added sections:
-  - CI/CD y Entornos Reproducibles: CI (GitHub Actions) DEBE correr lint y pruebas dentro
-    de contenedores Docker/Docker Compose, con un docker-compose.yml versionado en el repo
+  - Flujo de Desarrollo Guiado por Specs (SDD): nueva regla de branching — cada spec
+    `specs/NNN-nombre/` DEBE trabajarse en su propia rama `feature/NNN-nombre`
 - Removed sections: none
 - Templates requiring updates:
   - .specify/templates/plan-template.md ⚠ pending manual check (not reviewed in this run)
   - .specify/templates/spec-template.md ⚠ pending manual check (not reviewed in this run)
-  - .claude/skills/speckit-*/SKILL.md ✅ no constitution-specific references found in this run
+  - .claude/skills/speckit-specify/SKILL.md ⚠ el hook antes de crear el spec no crea rama
+    automáticamente en esta instalación (no hay .specify/extensions.yml); la rama
+    feature/NNN-nombre se crea manualmente hasta configurar un hook before_specify
 - Follow-up TODOs: none
 -->
 
@@ -91,6 +93,13 @@ innegociables:
   gastos variables e ingresos, reporte mensual) no se construyen presupuestos, metas,
   gráficos avanzados, notificaciones, importación de extractos ni app móvil nativa hasta
   que les llegue su turno como specs nuevos.
+- Cada spec DEBE desarrollarse en su propia rama de git, nombrada `feature/NNN-nombre`
+  usando el mismo número y sufijo del directorio `specs/NNN-nombre/` (p. ej. el spec
+  `specs/001-cimientos/` se trabaja en la rama `feature/001-cimientos`). La rama se crea
+  desde `main` antes de generar el spec (o inmediatamente después, si se generó primero) y
+  concentra el spec, el plan, las tareas y la implementación de esa funcionalidad hasta que
+  se fusiona a `main` vía Pull Request. No se mezclan cambios de dos specs distintos en la
+  misma rama.
 
 ## CI/CD y Entornos Reproducibles
 
@@ -123,4 +132,4 @@ innegociables:
 - La complejidad no justificada (nuevas dependencias, capas o abstracciones que no sirven
   al MVP) DEBE cuestionarse en la revisión del Plan antes de implementarse.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-28
+**Version**: 1.2.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-29
