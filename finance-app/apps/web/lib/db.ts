@@ -1,11 +1,14 @@
-import { createDbClient } from "@finance-app/db";
+import { createDbClient, type DbClient } from "@finance-app/db";
 
-function getDatabaseUrl(): string {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL environment variable is not set");
+let client: DbClient | undefined;
+
+export function getDb(): DbClient {
+  if (!client) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL environment variable is not set");
+    }
+    client = createDbClient(databaseUrl);
   }
-  return databaseUrl;
+  return client;
 }
-
-export const db = createDbClient(getDatabaseUrl());
