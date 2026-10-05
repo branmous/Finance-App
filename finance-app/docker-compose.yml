@@ -20,8 +20,6 @@ services:
       context: .
       dockerfile: Dockerfile.ci
     working_dir: /workspace
-    volumes:
-      - .:/workspace
     environment:
       DATABASE_URL: postgres://finance_app:finance_app@postgres:5432/finance_app
     depends_on:
