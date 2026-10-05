@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 → 1.1.0 (MINOR: new governance section added)
+- Version change: 1.2.0 → 1.3.0 (MINOR: new core principle added)
 - Modified principles: none
 - Added sections:
-  - CI/CD y Entornos Reproducibles: CI (GitHub Actions) DEBE correr lint y pruebas dentro
-    de contenedores Docker/Docker Compose, con un docker-compose.yml versionado en el repo
+  - Core Principles: VI. Código en Inglés — todo identificador, nombre de archivo, tabla,
+    columna, mensaje de commit y comentario de código DEBE escribirse en inglés; los
+    documentos de producto (specs, planes, constitución) pueden permanecer en español
 - Removed sections: none
 - Templates requiring updates:
   - .specify/templates/plan-template.md ⚠ pending manual check (not reviewed in this run)
-  - .specify/templates/spec-template.md ⚠ pending manual check (not reviewed in this run)
-  - .claude/skills/speckit-*/SKILL.md ✅ no constitution-specific references found in this run
+  - .specify/templates/tasks-template.md ⚠ pending manual check (not reviewed in this run)
 - Follow-up TODOs: none
 -->
 
@@ -64,6 +64,17 @@ innegociables:
 - Los reportes se calculan desde `transactions` (lo real ya ejecutado) y desde
   `bill_occurrences` (lo pendiente), nunca desde la plantilla directamente.
 
+### VI. Código en Inglés
+Todo artefacto de código — nombres de variables, funciones, métodos, clases, tipos,
+interfaces, archivos, tablas y columnas de base de datos, mensajes de commit y comentarios
+en el código — DEBE escribirse en inglés, incluso aunque el dominio del negocio (gastos,
+ingresos, cuentas) sea en español. Los documentos de producto (esta constitución, los specs,
+planes y tareas en `specs/`, y la guía del proyecto) SÍ pueden permanecer en español, porque
+están dirigidos al único usuario/dueño del proyecto. Esta separación evita mezclar dos
+idiomas dentro del mismo código fuente (p. ej. `montoEstimado` junto a `dueDate`), lo cual
+dificulta la lectura y el mantenimiento, y mantiene el código consistente con el ecosistema
+de librerías (TypeScript, Next.js, Drizzle) con el que convive.
+
 ## Modelo de Datos y Multiusuario
 
 - La base de datos es PostgreSQL, elegida por ser relacional y adecuada para reportes y
@@ -91,6 +102,13 @@ innegociables:
   gastos variables e ingresos, reporte mensual) no se construyen presupuestos, metas,
   gráficos avanzados, notificaciones, importación de extractos ni app móvil nativa hasta
   que les llegue su turno como specs nuevos.
+- Cada spec DEBE desarrollarse en su propia rama de git, nombrada `feature/NNN-nombre`
+  usando el mismo número y sufijo del directorio `specs/NNN-nombre/` (p. ej. el spec
+  `specs/001-cimientos/` se trabaja en la rama `feature/001-cimientos`). La rama se crea
+  desde `main` antes de generar el spec (o inmediatamente después, si se generó primero) y
+  concentra el spec, el plan, las tareas y la implementación de esa funcionalidad hasta que
+  se fusiona a `main` vía Pull Request. No se mezclan cambios de dos specs distintos en la
+  misma rama.
 
 ## CI/CD y Entornos Reproducibles
 
@@ -123,4 +141,4 @@ innegociables:
 - La complejidad no justificada (nuevas dependencias, capas o abstracciones que no sirven
   al MVP) DEBE cuestionarse en la revisión del Plan antes de implementarse.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-28
+**Version**: 1.3.0 | **Ratified**: 2026-09-28 | **Last Amended**: 2026-09-29
