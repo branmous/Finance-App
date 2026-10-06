@@ -6,3 +6,8 @@
 export function isPositiveInteger(value: number): boolean {
   return Number.isInteger(value) && value > 0;
 }
+
+export { normalizeIdentifier } from "./auth/identifier";
+export { LOCK_WINDOW_MS, MAX_ATTEMPTS, isLocked, nextFailureState } from "./auth/lockout";
+export type { LockoutState } from "./auth/lockout";
+export { hashPassword, verifyAgainstDummyHash, verifyPassword } from "./auth/password";

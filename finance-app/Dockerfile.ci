@@ -6,6 +6,9 @@ WORKDIR /workspace
 
 COPY . .
 
-RUN pnpm install --frozen-lockfile
+# The hoisted linker installs real directories instead of pnpm's symlinked
+# virtual store, which avoids broken bin links such as node_modules/turbo/bin/turbo.
+RUN pnpm install --frozen-lockfile --config.node-linker=hoisted \
+  && pnpm exec turbo --version
 
-CMD ["pnpm", "turbo", "run", "lint", "test"]
+CMD ["pnpm", "exec", "turbo", "run", "lint", "test"]

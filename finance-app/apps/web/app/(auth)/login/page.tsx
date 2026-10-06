@@ -5,33 +5,58 @@ import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
   const router = useRouter();
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // redirect: false keeps navigation under our control instead of Auth.js's
-  // default page redirect, so a rejected sign-in reliably lands on /denied
-  // rather than bouncing back to /login.
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = await signIn("credentials", { email, redirect: false });
-    router.push(result?.error ? "/denied" : "/");
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const result = await signIn("credentials", { identifier, password, redirect: false });
+
+    setIsSubmitting(false);
+    if (result?.error) {
+      setErrorMessage("Invalid email/username or password.");
+      return;
+    }
+    router.push("/");
   }
 
   return (
     <main>
       <h1>Sign in</h1>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="email">Email</label>
+        <label htmlFor="identifier">Email or username</label>
         <input
-          id="email"
-          name="email"
-          type="email"
-          value={email}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
+          id="identifier"
+          name="identifier"
+          type="text"
+          autoComplete="username"
+          value={identifier}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setIdentifier(event.target.value)}
           required
         />
-        <button type="submit">Sign in</button>
+
+        <label htmlFor="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
+          required
+        />
+
+        <button type="submit" disabled={isSubmitting}>
+          Sign in
+        </button>
       </form>
+      {errorMessage ? <p role="alert">{errorMessage}</p> : null}
     </main>
   );
 }

@@ -1,54 +1,59 @@
+import {
+  isLocked,
+  normalizeIdentifier,
+  nextFailureState,
+  verifyAgainstDummyHash,
+  verifyPassword,
+} from "@finance-app/core";
+import { createUserRepository } from "@finance-app/db";
 import type { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
+import { getDb } from "@/lib/db";
 
-function getAuthorizedEmail(): string {
-  const authorizedEmail = process.env.AUTHORIZED_EMAIL;
-  if (!authorizedEmail) {
-    throw new Error("AUTHORIZED_EMAIL environment variable is not set");
-  }
-  return normalizeEmail(authorizedEmail);
-}
-
-/**
- * Single-user email sign-in: whoever provides an email is "authenticated",
- * but only the normalized AUTHORIZED_EMAIL is allowed past the signIn callback
- * below (see FR-009, FR-010, and contracts/auth.md). No password is checked
- * because this app has exactly one real user and is gated by AUTHORIZED_EMAIL,
- * not by a credential secret.
- */
 export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "Email",
+      name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        identifier: { label: "Email or username", type: "text" },
+        password: { label: "Password", type: "password" },
       },
-      authorize(credentials) {
-        const email = credentials?.email;
-        if (!email) {
+      async authorize(credentials) {
+        const identifier = normalizeIdentifier(credentials?.identifier ?? "");
+        const password = credentials?.password ?? "";
+        if (!identifier || !password) {
           return null;
         }
-        return { id: normalizeEmail(email), email: normalizeEmail(email) };
+
+        const repo = createUserRepository(getDb());
+        const user = await repo.findByIdentifier(identifier);
+        if (!user) {
+          await verifyAgainstDummyHash(password);
+          return null;
+        }
+
+        const now = new Date();
+        const lockState = { failedAttempts: user.failedAttempts, lockedUntil: user.lockedUntil };
+        if (isLocked(lockState, now)) {
+          return null;
+        }
+
+        const passwordIsValid = await verifyPassword(password, user.passwordHash);
+        if (!passwordIsValid) {
+          await repo.saveLockoutState(user.id, nextFailureState(lockState, now));
+          return null;
+        }
+
+        if (user.failedAttempts > 0 || user.lockedUntil !== null) {
+          await repo.saveLockoutState(user.id, { failedAttempts: 0, lockedUntil: null });
+        }
+
+        return { id: user.id, email: user.email, name: user.username };
       },
     }),
   ],
   pages: {
     signIn: "/login",
-    error: "/denied",
-  },
-  callbacks: {
-    async signIn({ user }) {
-      if (!user.email) {
-        return false;
-      }
-      return normalizeEmail(user.email) === getAuthorizedEmail();
-    },
-    async session({ session }) {
-      return session;
-    },
   },
 };

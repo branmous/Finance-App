@@ -15,15 +15,38 @@ services:
       timeout: 5s
       retries: 10
 
+  # Pipeline de CI (lint + test). Se usa con `docker compose run --rm app`.
   app:
     build:
       context: .
       dockerfile: Dockerfile.ci
     working_dir: /workspace
-    volumes:
-      - .:/workspace
     environment:
       DATABASE_URL: postgres://finance_app:finance_app@postgres:5432/finance_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Aplicación web para desarrollo local: http://localhost:3000
+  # Aplica las migraciones y arranca Next.js. Los cambios en el código requieren
+  # reconstruir la imagen (`docker compose up --build web`).
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.ci
+    working_dir: /workspace
+    command:
+      - sh
+      - -c
+      - >-
+        pnpm --filter @finance-app/db migrate &&
+        pnpm --filter @finance-app/web exec next dev -H 0.0.0.0 -p 3000
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://finance_app:finance_app@postgres:5432/finance_app
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-only-secret-change-me}
     depends_on:
       postgres:
         condition: service_healthy
