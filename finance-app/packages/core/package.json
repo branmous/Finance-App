@@ -24,6 +24,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./categories": "./src/categories/category.ts"
+    "./categories": "./src/categories/category.ts",
+    "./expenses": "./src/expenses/index.ts"
   }
 }

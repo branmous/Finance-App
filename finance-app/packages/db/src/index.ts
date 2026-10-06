@@ -6,5 +6,12 @@ export type { DbClient, NewUser, UserRepository } from "./user-repository";
 export { sharedColumns } from "../schema/shared-columns";
 export { users } from "../schema/users";
 export { categories } from "../schema/categories";
-export { DuplicateCategoryNameError, createCategoryRepository } from "./category-repository";
+export { expenses } from "../schema/expenses";
+export {
+  CategoryInUseError,
+  DuplicateCategoryNameError,
+  createCategoryRepository,
+} from "./category-repository";
 export type { CategoryRepository, CategoryRow } from "./category-repository";
+export { ExpenseCategoryNotFoundError, createExpenseRepository } from "./expense-repository";
+export type { ExpenseRepository, ExpenseRow, ExpenseWithCategory } from "./expense-repository";
