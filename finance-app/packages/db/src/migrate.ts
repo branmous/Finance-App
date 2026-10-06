@@ -1,6 +1,7 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { fileURLToPath } from "node:url";
 
 /**
  * Applies pending migrations from ../migrations. Safe to run repeatedly:
@@ -17,7 +18,7 @@ async function main() {
   const migrationClient = postgres(databaseUrl, { max: 1 });
   const db = drizzle(migrationClient);
 
-  await migrate(db, { migrationsFolder: new URL("../migrations", import.meta.url).pathname });
+  await migrate(db, { migrationsFolder: fileURLToPath(new URL("../migrations", import.meta.url)) });
 
   await migrationClient.end();
 }
