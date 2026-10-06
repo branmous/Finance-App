@@ -1,6 +1,6 @@
 "use server";
 
-import { validateExpenseInput, type ExpenseInputErrors } from "@finance-app/core";
+import { currentPeriod, isUuid, validateExpenseInput, type ExpenseInputErrors } from "@finance-app/core";
 import { ExpenseCategoryNotFoundError, createExpenseRepository } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
@@ -57,6 +57,28 @@ export async function updateExpense(id: string, input: unknown): Promise<Expense
   }
   refresh();
   return { ok: true };
+}
+
+export type CopyExpensesResult = { ok: true; copied: number } | { ok: false; message: string };
+
+const MAX_COPY_BATCH = 200;
+
+/**
+ * Copies the selected expenses (normally last month's) into the current month as pending.
+ * The target month is computed here, never taken from the client.
+ */
+export async function copyExpenses(ids: unknown): Promise<CopyExpensesResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_COPY_BATCH || !ids.every(isUuid)) {
+    return { ok: false, message: "Select at least one expense to copy." };
+  }
+
+  const copied = await createExpenseRepository(getDb()).copyToPeriod(user.id, [...new Set(ids)], currentPeriod());
+  if (copied === 0) return { ok: false, message: NOT_FOUND };
+  refresh();
+  return { ok: true, copied };
 }
 
 export async function deleteExpense(id: string): Promise<ExpenseActionResult> {

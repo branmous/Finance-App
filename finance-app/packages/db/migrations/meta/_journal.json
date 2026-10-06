@@ -29,6 +29,13 @@
       "when": 1791319132551,
       "tag": "0003_create_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791321600614,
+      "tag": "0004_expenses_paid_on_optional",
+      "breakpoints": true
     }
   ]
 }

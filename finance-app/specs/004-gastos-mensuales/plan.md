@@ -13,6 +13,8 @@ Actions en `apps/web`, siguiendo el patrón del módulo de categorías.
 - **Datos**: tabla `expenses` (`id`, `user_id` FK `users` cascade, `category_id` FK `categories` **restrict**, `amount_minor` bigint, `currency` varchar(3) default `COP`, `period` varchar(7), `paid_on` date, `note` varchar(140), timestamps). Índices `(user_id, period)` y `(category_id)`. Migración `0003_create_expenses.sql`.
 - **Dominio** (`packages/core/src/expenses/`): `validateExpenseInput`, helpers de periodo (`currentPeriod`, `shiftPeriod`, `formatPeriod`, `isValidPeriod`) y `formatCop`. Subpath `@finance-app/core/expenses` para componentes cliente, sin arrastrar bcrypt al navegador.
 - **Repositorio**: `packages/db/src/expense-repository.ts` (`listByPeriod`, `totalByPeriod`, `create`, `update`, `remove`). `create` y `update` verifican que la categoría sea del usuario (la FK sola no lo garantiza). `category-repository.remove` lanza `CategoryInUseError` ante la violación de FK.
+- **Pendientes**: `paid_on` es nulo mientras el gasto no se ha pagado (migración `0004_expenses_paid_on_optional.sql`). El repositorio expone `summaryByPeriod` (total, pagado, pendiente) y lista primero los pendientes.
+- **Copia**: `copyToPeriod(userId, ids, period)` lee solo gastos del usuario e inserta las copias (categoría, monto, nota; sin fecha de pago) en una sola sentencia. La Server Action `copyExpenses(ids)` valida los ids y calcula el mes destino en el servidor.
 - **Web**: `app/(app)/monthly-expenses/` (`page.tsx` lee `?period=YYYY-MM`, `actions.ts`, `expenses-view.tsx`, `expense-form-dialog.tsx`); ítem "Monthly expenses" en el menú; widget "Spent in <mes>" en el dashboard.
 
 ## Constitution Check

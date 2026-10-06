@@ -14,4 +14,4 @@ export {
 } from "./category-repository";
 export type { CategoryRepository, CategoryRow } from "./category-repository";
 export { ExpenseCategoryNotFoundError, createExpenseRepository } from "./expense-repository";
-export type { ExpenseRepository, ExpenseRow, ExpenseWithCategory } from "./expense-repository";
+export type { ExpenseRepository, ExpenseRow, ExpenseWithCategory, PeriodSummary } from "./expense-repository";

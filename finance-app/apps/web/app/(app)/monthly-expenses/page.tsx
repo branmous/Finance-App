@@ -1,4 +1,11 @@
-import { currentPeriod, isValidPeriod, type CategoryColor, type CategoryIcon, type CategoryType } from "@finance-app/core";
+import {
+  currentPeriod,
+  isValidPeriod,
+  shiftPeriod,
+  type CategoryColor,
+  type CategoryIcon,
+  type CategoryType,
+} from "@finance-app/core";
 import { createCategoryRepository, createExpenseRepository } from "@finance-app/db";
 
 import { getDb } from "@/lib/db";
@@ -16,15 +23,20 @@ export default async function MonthlyExpensesPage({ searchParams }: Props) {
   const thisMonth = currentPeriod();
   const period = isValidPeriod(requested) ? requested : thisMonth;
 
+  const isCurrentPeriod = period === thisMonth;
+
   const user = await getSessionUser();
   const db = getDb();
-  const [rows, total, categoryRows] = user
+  const expenseRepo = createExpenseRepository(db);
+  const [rows, summary, categoryRows, lastMonthRows] = user
     ? await Promise.all([
-        createExpenseRepository(db).listByPeriod(user.id, period),
-        createExpenseRepository(db).totalByPeriod(user.id, period),
+        expenseRepo.listByPeriod(user.id, period),
+        expenseRepo.summaryByPeriod(user.id, period),
         createCategoryRepository(db).list(user.id),
+        // Only the current month offers "copy from last month", so only then is it needed.
+        isCurrentPeriod ? expenseRepo.listByPeriod(user.id, shiftPeriod(thisMonth, -1)) : Promise.resolve([]),
       ])
-    : [[], 0, []];
+    : [[], { total: 0, paid: 0, pending: 0 }, [], []];
 
   // The database stores these as plain strings; they were validated against the closed lists on write.
   const categories: CategoryOption[] = categoryRows.map((row) => ({
@@ -32,7 +44,7 @@ export default async function MonthlyExpensesPage({ searchParams }: Props) {
     name: row.name,
     type: row.type as CategoryType,
   }));
-  const expenses: ExpenseItem[] = rows.map((row) => ({
+  const toItem = (row: (typeof rows)[number]): ExpenseItem => ({
     id: row.id,
     categoryId: row.categoryId,
     amountMinor: row.amountMinor,
@@ -42,14 +54,15 @@ export default async function MonthlyExpensesPage({ searchParams }: Props) {
     categoryName: row.categoryName,
     categoryColor: row.categoryColor as CategoryColor,
     categoryIcon: row.categoryIcon as CategoryIcon,
-  }));
+  });
 
   return (
     <ExpensesView
       period={period}
-      isCurrentPeriod={period === thisMonth}
-      expenses={expenses}
-      total={total}
+      isCurrentPeriod={isCurrentPeriod}
+      expenses={rows.map(toItem)}
+      lastMonthExpenses={lastMonthRows.map(toItem)}
+      summary={summary}
       categories={categories}
     />
   );

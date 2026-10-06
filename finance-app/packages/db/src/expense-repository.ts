@@ -1,5 +1,5 @@
 import type { ExpenseInput } from "@finance-app/core";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { categories } from "../schema/categories";
 import { expenses } from "../schema/expenses";
@@ -13,12 +13,15 @@ export type ExpenseWithCategory = {
   amountMinor: number;
   currency: string;
   period: string;
-  paidOn: string;
+  /** null while the expense is tracked but not paid yet. */
+  paidOn: string | null;
   note: string;
   categoryName: string;
   categoryColor: string;
   categoryIcon: string;
 };
+
+export type PeriodSummary = { total: number; paid: number; pending: number };
 
 /** The category does not exist or belongs to another user. */
 export class ExpenseCategoryNotFoundError extends Error {
@@ -60,7 +63,20 @@ export function createExpenseRepository(db: DbClient) {
         .from(expenses)
         .innerJoin(categories, eq(expenses.categoryId, categories.id))
         .where(and(eq(expenses.userId, userId), eq(expenses.period, period)))
-        .orderBy(desc(expenses.paidOn), desc(expenses.createdAt));
+        // Pending (no paid date) first so they stay in sight, then the most recently paid.
+        .orderBy(sql`${expenses.paidOn} is null desc`, desc(expenses.paidOn), desc(expenses.createdAt));
+    },
+
+    async summaryByPeriod(userId: string, period: string): Promise<PeriodSummary> {
+      const [row] = await db
+        .select({
+          total: sql<string>`coalesce(sum(${expenses.amountMinor}), 0)`,
+          paid: sql<string>`coalesce(sum(${expenses.amountMinor}) filter (where ${expenses.paidOn} is not null), 0)`,
+          pending: sql<string>`coalesce(sum(${expenses.amountMinor}) filter (where ${expenses.paidOn} is null), 0)`,
+        })
+        .from(expenses)
+        .where(and(eq(expenses.userId, userId), eq(expenses.period, period)));
+      return { total: Number(row?.total ?? 0), paid: Number(row?.paid ?? 0), pending: Number(row?.pending ?? 0) };
     },
 
     async totalByPeriod(userId: string, period: string): Promise<number> {
@@ -91,6 +107,35 @@ export function createExpenseRepository(db: DbClient) {
         .where(and(eq(expenses.id, id), eq(expenses.userId, userId)))
         .returning();
       return row ?? null;
+    },
+
+    /**
+     * Copies the given expenses (only the ones the user owns) into `period` as pending: same
+     * category, amount and note, no paid date. One INSERT ... SELECT, so it is all or nothing.
+     * Returns how many were copied.
+     */
+    async copyToPeriod(userId: string, ids: string[], period: string): Promise<number> {
+      if (ids.length === 0) return 0;
+      const sources = await db
+        .select()
+        .from(expenses)
+        .where(and(eq(expenses.userId, userId), inArray(expenses.id, ids)));
+      if (sources.length === 0) return 0;
+      const rows = await db
+        .insert(expenses)
+        .values(
+          sources.map((source) => ({
+            userId,
+            categoryId: source.categoryId,
+            amountMinor: source.amountMinor,
+            currency: source.currency,
+            period,
+            paidOn: null,
+            note: source.note,
+          })),
+        )
+        .returning();
+      return rows.length;
     },
 
     async remove(userId: string, id: string): Promise<boolean> {

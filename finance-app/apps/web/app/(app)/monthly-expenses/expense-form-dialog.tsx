@@ -17,7 +17,8 @@ export type ExpenseItem = {
   categoryId: string;
   amountMinor: number;
   period: string;
-  paidOn: string;
+  /** null while the expense is tracked but not paid yet. */
+  paidOn: string | null;
   note: string;
   categoryName: string;
   categoryColor: CategoryColor;
@@ -59,6 +60,8 @@ export function ExpenseFormDialog({ open, expense, ...rest }: Props) {
 function ExpenseForm({ expense, categories, defaultPeriod, onClose }: Omit<Props, "open">) {
   const [categoryId, setCategoryId] = useState(expense?.categoryId ?? categories[0]?.id ?? "");
   const [amount, setAmount] = useState(expense ? String(expense.amountMinor) : "");
+  // New expenses default to "already paid today"; an existing pending one starts unchecked.
+  const [paid, setPaid] = useState(expense ? expense.paidOn !== null : true);
   const [paidOn, setPaidOn] = useState(expense?.paidOn ?? todayLocal());
   const [period, setPeriod] = useState(expense?.period ?? defaultPeriod);
   const [note, setNote] = useState(expense?.note ?? "");
@@ -72,7 +75,7 @@ function ExpenseForm({ expense, categories, defaultPeriod, onClose }: Omit<Props
     setFormError(null);
 
     startTransition(async () => {
-      const input = { categoryId, amountMinor: parseAmount(amount), period, paidOn, note };
+      const input = { categoryId, amountMinor: parseAmount(amount), period, paidOn: paid ? paidOn : null, note };
       const result = expense ? await updateExpense(expense.id, input) : await createExpense(input);
       if (result.ok) {
         onClose();
@@ -106,15 +109,32 @@ function ExpenseForm({ expense, categories, defaultPeriod, onClose }: Omit<Props
         required
       />
 
-      <Input
-        id="expense-paid-on"
-        label="Date paid"
-        type="date"
-        value={paidOn}
-        onChange={(event) => setPaidOn(event.target.value)}
-        error={errors.paidOn}
-        required
-      />
+      <div>
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={paid}
+            onChange={(event) => setPaid(event.target.checked)}
+            className="size-5 accent-leaf"
+          />
+          Already paid
+        </label>
+        {paid ? (
+          <Input
+            id="expense-paid-on"
+            label="Date paid"
+            type="date"
+            value={paidOn}
+            onChange={(event) => setPaidOn(event.target.value)}
+            error={errors.paidOn}
+            required
+          />
+        ) : (
+          <p className="text-xs text-paper-muted">
+            Saved as pending: it counts toward the month but is not marked as paid yet.
+          </p>
+        )}
+      </div>
 
       <div>
         <Input

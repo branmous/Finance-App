@@ -72,14 +72,26 @@ async function openMonth(page: Page, period: string) {
   await expect(page.getByRole("heading", { name: "Monthly expenses", level: 1 })).toBeVisible();
 }
 
-type ExpenseFields = { category: string; amount: string; paidOn: string; period: string; note?: string };
+/** `paidOn: null` leaves the expense pending (not paid yet). */
+type ExpenseFields = { category: string; amount: string; paidOn: string | null; period: string; note?: string };
+
+function monthOf(offset: number): string {
+  const date = new Date();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + offset);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
 
 async function addExpense(page: Page, fields: ExpenseFields) {
   await page.getByRole("button", { name: "New expense" }).first().click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Category").selectOption({ label: fields.category });
   await dialog.getByLabel("Amount paid (COP)").fill(fields.amount);
-  await dialog.getByLabel("Date paid").fill(fields.paidOn);
+  if (fields.paidOn === null) {
+    await dialog.getByLabel("Already paid").uncheck();
+  } else {
+    await dialog.getByLabel("Date paid").fill(fields.paidOn);
+  }
   await dialog.getByLabel("Counts toward month").fill(fields.period);
   if (fields.note) await dialog.getByLabel("Note (optional)").fill(fields.note);
   await dialog.getByRole("button", { name: "Add expense" }).click();
@@ -227,4 +239,89 @@ test("the page is protected and the menu links to it", async ({ page }) => {
   await signIn(page, OWNER.email);
   await page.getByRole("link", { name: "Monthly expenses", exact: true }).click();
   await expect(page).toHaveURL(/\/monthly-expenses$/);
+});
+
+test("an expense can be tracked without a paid date and marked as paid later", async ({ page }) => {
+  const rent = `Pending rent ${runId}`;
+  await signIn(page, OWNER.email);
+  await createCategory(page, rent);
+
+  await openMonth(page, MONTHS.guard);
+  await addExpense(page, { category: rent, amount: "900000", paidOn: null, period: MONTHS.guard });
+  await addExpense(page, { category: rent, amount: "100000", paidOn: "2031-07-02", period: MONTHS.guard });
+
+  await expect(page.getByTestId("month-total")).toContainText("1.000.000");
+  await expect(page.getByTestId("month-pending")).toContainText("900.000");
+  await expect(page.getByTestId("month-paid")).toContainText("100.000");
+  await expect(page.getByText("Pending", { exact: true }).first()).toBeVisible();
+
+  // Mark the pending one as paid.
+  await page.getByRole("button", { name: `Edit ${rent} expense` }).first().click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Already paid")).not.toBeChecked();
+  await dialog.getByLabel("Already paid").check();
+  await dialog.getByLabel("Date paid").fill("2031-07-09");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("month-pending")).toContainText("0");
+  await expect(page.getByTestId("month-paid")).toContainText("1.000.000");
+
+  await deleteExpense(page, rent);
+  await deleteExpense(page, rent);
+  await deleteCategory(page, rent);
+});
+
+test("copies selected expenses from last month into the current month as pending", async ({ page }) => {
+  const rent = `Copy rent ${runId}`;
+  const gym = `Copy gym ${runId}`;
+  const lastMonth = monthOf(-1);
+  await signIn(page, OWNER.email);
+  await createCategory(page, rent);
+  await createCategory(page, gym);
+
+  await openMonth(page, lastMonth);
+  await addExpense(page, { category: rent, amount: "2000000", paidOn: `${lastMonth}-03`, period: lastMonth });
+  await addExpense(page, { category: gym, amount: "80000", paidOn: `${lastMonth}-04`, period: lastMonth });
+
+  await page.goto("/monthly-expenses");
+  await expect(page.getByTestId("month-total")).toContainText("0");
+  await page.getByRole("button", { name: "Copy from last month" }).click();
+  const dialog = page.getByRole("dialog");
+  const addButton = dialog.getByRole("button", { name: /^Add/ });
+
+  // Nothing is selected by default, so nothing can be added yet.
+  await expect(dialog.getByText("Nothing selected")).toBeVisible();
+  await expect(addButton).toBeDisabled();
+
+  // Only the rent is picked; the gym is left out.
+  await dialog.getByRole("checkbox", { name: new RegExp(rent) }).check();
+  await expect(dialog.getByText(/1 selected/)).toBeVisible();
+  await addButton.click();
+  await expect(dialog).toBeHidden();
+
+  await expect(page.getByTestId("month-total")).toContainText("2.000.000");
+  await expect(page.getByTestId("month-pending")).toContainText("2.000.000");
+  await expect(page.getByText(gym, { exact: true })).toHaveCount(0);
+
+  // Copying again flags the one that is already there.
+  await page.getByRole("button", { name: "Copy from last month" }).click();
+  await expect(dialog.getByText("Already added")).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+
+  // Clean up: the copy in this month, then last month's expenses and categories.
+  await deleteExpense(page, rent);
+  await openMonth(page, lastMonth);
+  await deleteExpense(page, rent);
+  await deleteExpense(page, gym);
+  await deleteCategory(page, rent);
+  await deleteCategory(page, gym);
+});
+
+test("copy from last month is only offered for the current month", async ({ page }) => {
+  await signIn(page, OWNER.email);
+  await openMonth(page, monthOf(-1));
+  await expect(page.getByRole("button", { name: "Copy from last month" })).toHaveCount(0);
+
+  await openMonth(page, monthOf(1));
+  await expect(page.getByRole("button", { name: "Copy from last month" })).toHaveCount(0);
 });

@@ -114,6 +114,88 @@ describe("expense repository", () => {
     await expect(repo.listByPeriod(alice.id, "2026-09")).resolves.toEqual([]);
   });
 
+  it("stores an expense with no paid date as pending, and lists pending ones first", async () => {
+    const { repo, alice, input } = await setup();
+    await repo.create(alice.id, { ...input, paidOn: "2026-09-20", amountMinor: 1 });
+    const pending = await repo.create(alice.id, { ...input, paidOn: null, amountMinor: 2 });
+
+    expect(pending.paidOn).toBeNull();
+    const listed = await repo.listByPeriod(alice.id, "2026-09");
+    expect(listed.map((row) => [row.amountMinor, row.paidOn])).toEqual([
+      [2, null],
+      [1, "2026-09-20"],
+    ]);
+  });
+
+  it("marks a pending expense as paid by updating its date, and back", async () => {
+    const { repo, alice, input } = await setup();
+    const created = await repo.create(alice.id, { ...input, paidOn: null });
+
+    await expect(repo.update(alice.id, created.id, { ...input, paidOn: "2026-09-30" })).resolves.toMatchObject({
+      paidOn: "2026-09-30",
+    });
+    await expect(repo.update(alice.id, created.id, { ...input, paidOn: null })).resolves.toMatchObject({
+      paidOn: null,
+    });
+  });
+
+  it("splits a month's total into paid and pending", async () => {
+    const { repo, alice, bob, input } = await setup();
+    await repo.create(alice.id, { ...input, amountMinor: 2000000 });
+    await repo.create(alice.id, { ...input, amountMinor: 300000, paidOn: null });
+    await repo.create(alice.id, { ...input, amountMinor: 50000, paidOn: null });
+    await repo.create(alice.id, { ...input, period: "2026-08", amountMinor: 9, paidOn: null });
+
+    await expect(repo.summaryByPeriod(alice.id, "2026-09")).resolves.toEqual({
+      total: 2350000,
+      paid: 2000000,
+      pending: 350000,
+    });
+    await expect(repo.summaryByPeriod(alice.id, "2026-07")).resolves.toEqual({ total: 0, paid: 0, pending: 0 });
+    await expect(repo.summaryByPeriod(bob.id, "2026-09")).resolves.toEqual({ total: 0, paid: 0, pending: 0 });
+  });
+
+  it("copies selected expenses into another month as pending, keeping category, amount and note", async () => {
+    const { repo, alice, rent, input } = await setup();
+    const rentExpense = await repo.create(alice.id, { ...input, note: "September rent" });
+    const other = await repo.create(alice.id, { ...input, amountMinor: 5, paidOn: null });
+
+    await expect(repo.copyToPeriod(alice.id, [rentExpense.id], "2026-10")).resolves.toBe(1);
+
+    const copied = await repo.listByPeriod(alice.id, "2026-10");
+    expect(copied).toHaveLength(1);
+    expect(copied[0]).toMatchObject({
+      categoryId: rent.id,
+      amountMinor: 2000000,
+      note: "September rent",
+      period: "2026-10",
+      paidOn: null,
+    });
+    // The originals are untouched and the unselected one was not copied.
+    await expect(repo.listByPeriod(alice.id, "2026-09")).resolves.toHaveLength(2);
+    expect(copied[0]!.id).not.toBe(rentExpense.id);
+    expect(other.id).toBeTruthy();
+  });
+
+  it("copies several at once and returns 0 for an empty selection", async () => {
+    const { repo, alice, input } = await setup();
+    const a = await repo.create(alice.id, input);
+    const b = await repo.create(alice.id, { ...input, amountMinor: 7 });
+
+    await expect(repo.copyToPeriod(alice.id, [], "2026-10")).resolves.toBe(0);
+    await expect(repo.copyToPeriod(alice.id, [a.id, b.id], "2026-10")).resolves.toBe(2);
+    await expect(repo.totalByPeriod(alice.id, "2026-10")).resolves.toBe(2000007);
+  });
+
+  it("never copies another user's expenses", async () => {
+    const { repo, alice, bob, input } = await setup();
+    const aliceExpense = await repo.create(alice.id, input);
+
+    await expect(repo.copyToPeriod(bob.id, [aliceExpense.id], "2026-10")).resolves.toBe(0);
+    await expect(repo.listByPeriod(bob.id, "2026-10")).resolves.toEqual([]);
+    await expect(repo.listByPeriod(alice.id, "2026-10")).resolves.toEqual([]);
+  });
+
   it("blocks deleting a category that has expenses, and allows it once they are gone", async () => {
     const { repo, categories, alice, rent, input } = await setup();
     const created = await repo.create(alice.id, input);

@@ -1,0 +1,1 @@
+ALTER TABLE "expenses" ALTER COLUMN "paid_on" DROP NOT NULL;

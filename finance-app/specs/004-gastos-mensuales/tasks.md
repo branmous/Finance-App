@@ -18,6 +18,13 @@ Rutas relativas a `finance-app/`.
 - [X] T009 [US2] Ítem de menú, iconos de navegación y widget del dashboard
 - [X] T010 [US4] Mensaje de categoría en uso en `app/(app)/categories/actions.ts`
 
-## Phase 4: Verificación
+## Phase 4: Gastos pendientes y copia del mes anterior
+- [X] T013 [US5] Fecha de pago opcional: validación en `core`, migración `0004` y pruebas
+- [X] T014 [US5] `summaryByPeriod` y `copyToPeriod` en el repositorio, con pruebas
+- [X] T015 [US5] Server Action `copyExpenses`, casilla "Already paid" en el formulario y resumen Paid/Pending
+- [X] T016 [US5] Modal `copy-expenses-dialog.tsx` y botón "Copy from last month" (solo en el mes actual)
+- [X] T017 [US5] Pruebas e2e de gasto pendiente y de copia
+
+## Phase 5: Verificación
 - [X] T011 Playwright `tests/e2e/monthly-expenses.spec.ts`
 - [X] T012 Lint, tests, build y revisión manual

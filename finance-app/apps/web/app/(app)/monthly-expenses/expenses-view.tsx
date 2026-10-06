@@ -1,6 +1,7 @@
 "use client";
 
 import { formatCop, formatPeriod, shiftPeriod } from "@finance-app/core/expenses";
+import type { PeriodSummary } from "@finance-app/db";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -11,13 +12,16 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 
 import { deleteExpense } from "./actions";
+import { CopyExpensesDialog } from "./copy-expenses-dialog";
 import { ExpenseFormDialog, type CategoryOption, type ExpenseItem } from "./expense-form-dialog";
 
 type Props = {
   period: string;
   isCurrentPeriod: boolean;
   expenses: ExpenseItem[];
-  total: number;
+  /** Previous month's expenses, offered for copying; only loaded for the current month. */
+  lastMonthExpenses: ExpenseItem[];
+  summary: PeriodSummary;
   categories: CategoryOption[];
 };
 
@@ -36,9 +40,17 @@ function formatPaidOn(paidOn: string): string {
   );
 }
 
-export function ExpensesView({ period, isCurrentPeriod, expenses, total, categories }: Props) {
+export function ExpensesView({
+  period,
+  isCurrentPeriod,
+  expenses,
+  lastMonthExpenses,
+  summary,
+  categories,
+}: Props) {
   // `undefined` = closed, `null` = creating, an item = editing.
   const [editing, setEditing] = useState<ExpenseItem | null | undefined>(undefined);
+  const [copying, setCopying] = useState(false);
   const [deleting, setDeleting] = useState<ExpenseItem | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -66,10 +78,18 @@ export function ExpensesView({ period, isCurrentPeriod, expenses, total, categor
           <p className="mt-1.5 text-paper-muted">Record what you paid and see where each month went.</p>
         </div>
         {hasCategories ? (
-          <Button onClick={() => setEditing(null)}>
-            <Icon name="plus" width={18} height={18} />
-            New expense
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            {isCurrentPeriod ? (
+              <Button variant="secondary" onClick={() => setCopying(true)}>
+                <Icon name="repeat" width={18} height={18} />
+                Copy from last month
+              </Button>
+            ) : null}
+            <Button onClick={() => setEditing(null)}>
+              <Icon name="plus" width={18} height={18} />
+              New expense
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -95,11 +115,25 @@ export function ExpensesView({ period, isCurrentPeriod, expenses, total, categor
           Total spent in {monthLabel}
         </h2>
         <p className="mt-2 font-display text-5xl font-semibold" data-testid="month-total">
-          {formatCop(total)}
+          {formatCop(summary.total)}
         </p>
         <p className="mt-1 text-sm text-ink-muted">
           {expenses.length} {expenses.length === 1 ? "expense" : "expenses"}
         </p>
+        <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 border-t border-ink-line pt-4 text-sm">
+          <div>
+            <dt className="text-ink-muted">Paid</dt>
+            <dd className="font-semibold tabular-nums" data-testid="month-paid">
+              {formatCop(summary.paid)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-muted">Pending</dt>
+            <dd className="font-semibold tabular-nums" data-testid="month-pending">
+              {formatCop(summary.pending)}
+            </dd>
+          </div>
+        </dl>
       </section>
 
       <div className="mt-8">
@@ -130,7 +164,13 @@ export function ExpensesView({ period, isCurrentPeriod, expenses, total, categor
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{item.categoryName}</p>
                   <p className="truncate text-sm text-paper-muted">
-                    Paid {formatPaidOn(item.paidOn)}
+                    {item.paidOn ? (
+                      `Paid ${formatPaidOn(item.paidOn)}`
+                    ) : (
+                      <span className="rounded-full bg-saffron-tint px-2 py-0.5 text-xs font-semibold text-ink">
+                        Pending
+                      </span>
+                    )}
                     {item.note ? ` · ${item.note}` : ""}
                   </p>
                 </div>
@@ -166,6 +206,14 @@ export function ExpensesView({ period, isCurrentPeriod, expenses, total, categor
         categories={categories}
         defaultPeriod={period}
         onClose={() => setEditing(undefined)}
+      />
+
+      <CopyExpensesDialog
+        open={copying}
+        sourcePeriod={shiftPeriod(period, -1)}
+        sources={lastMonthExpenses}
+        existing={expenses}
+        onClose={() => setCopying(false)}
       />
 
       <Dialog open={deleting !== null} title="Delete expense" onClose={() => setDeleting(null)}>

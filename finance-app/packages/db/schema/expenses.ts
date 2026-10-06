@@ -21,8 +21,8 @@ export const expenses = pgTable(
     currency: varchar("currency", { length: 3 }).notNull().default("COP"),
     // Month the expense belongs to ("YYYY-MM"), independent of when it was paid.
     period: varchar("period", { length: 7 }).notNull(),
-    // Day it was actually paid ("YYYY-MM-DD").
-    paidOn: date("paid_on", { mode: "string" }).notNull(),
+    // Day it was actually paid ("YYYY-MM-DD"); null while the expense is tracked but still pending.
+    paidOn: date("paid_on", { mode: "string" }),
     note: varchar("note", { length: 140 }).notNull().default(""),
   },
   (table) => ({

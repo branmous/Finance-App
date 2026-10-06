@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateExpenseInput } from "../../src/expenses/expense";
+import { isUuid, validateExpenseInput } from "../../src/expenses/expense";
 
 const valid = {
   categoryId: "3f1c2b7e-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
@@ -22,6 +22,16 @@ describe("validateExpenseInput", () => {
   it("treats a missing or blank note as an empty string", () => {
     expect(validateExpenseInput({ ...valid, note: undefined })).toMatchObject({ ok: true, value: { note: "" } });
     expect(validateExpenseInput({ ...valid, note: "   " })).toMatchObject({ ok: true, value: { note: "" } });
+  });
+
+  it.each([null, undefined, "", "   "])("treats paid date %j as not paid yet", (paidOn) => {
+    expect(validateExpenseInput({ ...valid, paidOn })).toMatchObject({ ok: true, value: { paidOn: null } });
+  });
+
+  it("recognizes uuids", () => {
+    expect(isUuid(valid.categoryId)).toBe(true);
+    expect(isUuid("nope")).toBe(false);
+    expect(isUuid(42)).toBe(false);
   });
 
   it("rejects non-object input", () => {
@@ -46,7 +56,7 @@ describe("validateExpenseInput", () => {
     if (!result.ok) expect(result.errors.period).toBeTruthy();
   });
 
-  it.each(["2026-02-30", "2026-10", "03/10/2026", ""])("rejects paid date %j", (paidOn) => {
+  it.each(["2026-02-30", "2026-10", "03/10/2026", 20261003])("rejects paid date %j", (paidOn) => {
     const result = validateExpenseInput({ ...valid, paidOn });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.paidOn).toBeTruthy();
