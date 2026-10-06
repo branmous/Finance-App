@@ -53,6 +53,15 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+  callbacks: {
+    // NextAuth stores the user id in the JWT `sub`; expose it so server code can scope data by owner.
+    session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+      }
+      return session;
+    },
+  },
   pages: {
     signIn: "/login",
   },

@@ -62,13 +62,13 @@ test("signing in with username and password reaches the welcome page", async ({ 
 
 test("a wrong password shows a generic error and stays on /login", async ({ page }) => {
   await submitLogin(page, MAIN_USER.email, "not-the-right-password");
-  await expect(page.getByRole("alert")).toHaveText("Invalid email/username or password.");
+  await expect(page.getByRole("alert").filter({ hasText: "Invalid" })).toHaveText("Invalid email/username or password.");
   await expect(page).toHaveURL(/\/login$/);
 });
 
 test("an unknown identifier shows the same generic error", async ({ page }) => {
   await submitLogin(page, "nobody@example.com", PASSWORD);
-  await expect(page.getByRole("alert")).toHaveText("Invalid email/username or password.");
+  await expect(page.getByRole("alert").filter({ hasText: "Invalid" })).toHaveText("Invalid email/username or password.");
 });
 
 test("five failed attempts lock the account even with the right password afterwards", async ({
@@ -76,10 +76,10 @@ test("five failed attempts lock the account even with the right password afterwa
 }) => {
   for (let attempt = 0; attempt < 5; attempt++) {
     await submitLogin(page, LOCKOUT_USER.username, "wrong-password-attempt");
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Invalid" })).toBeVisible();
   }
 
   await submitLogin(page, LOCKOUT_USER.username, PASSWORD);
-  await expect(page.getByRole("alert")).toHaveText("Invalid email/username or password.");
+  await expect(page.getByRole("alert").filter({ hasText: "Invalid" })).toHaveText("Invalid email/username or password.");
   await expect(page).toHaveURL(/\/login$/);
 });
