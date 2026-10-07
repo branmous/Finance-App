@@ -41,6 +41,13 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
   const alreadyAdded = (item: ExpenseItem) => existingKeys.has(fingerprint(item));
   const selectable = sources.filter((item) => !alreadyAdded(item));
 
+  // Expenses paid with another one are listed right under it.
+  const sourceIds = new Set(sources.map((item) => item.id));
+  const isChild = (item: ExpenseItem) => item.parentId !== null && sourceIds.has(item.parentId);
+  const ordered = sources
+    .filter((item) => !isChild(item))
+    .flatMap((item) => [item, ...sources.filter((child) => child.parentId === item.id)]);
+
   const selectedItems = sources.filter((item) => selected.has(item.id));
   const selectedTotal = selectedItems.reduce((sum, item) => sum + item.amountMinor, 0);
 
@@ -79,7 +86,8 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
   return (
     <div>
       <p className="text-sm text-paper-muted">
-        Pick the ones to add to this month. They are added as pending, so you can mark them as paid later.
+        Pick the ones to add to this month. They are added as pending, so you can mark them as paid later. An expense
+        paid with another one stays linked only if you pick both.
       </p>
 
       {selectable.length > 0 ? (
@@ -98,12 +106,15 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
       ) : null}
 
       <ul className="mt-3 max-h-80 divide-y divide-paper-line overflow-y-auto border-y border-paper-line">
-        {sources.map((item) => {
+        {ordered.map((item) => {
           const added = alreadyAdded(item);
           const inputId = `copy-${item.id}`;
           return (
             <li key={item.id}>
-              <label htmlFor={inputId} className="flex min-h-14 cursor-pointer items-center gap-3 py-2">
+              <label
+                htmlFor={inputId}
+                className={`flex min-h-14 cursor-pointer items-center gap-3 py-2 ${isChild(item) ? "pl-6" : ""}`}
+              >
                 <input
                   id={inputId}
                   type="checkbox"

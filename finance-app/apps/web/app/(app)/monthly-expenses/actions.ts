@@ -1,7 +1,11 @@
 "use server";
 
 import { currentPeriod, isUuid, validateExpenseInput, type ExpenseInputErrors } from "@finance-app/core";
-import { ExpenseCategoryNotFoundError, createExpenseRepository } from "@finance-app/db";
+import {
+  ExpenseCategoryNotFoundError,
+  InvalidExpenseParentError,
+  createExpenseRepository,
+} from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
 import { getDb } from "@/lib/db";
@@ -20,6 +24,17 @@ function refresh() {
   revalidatePath("/");
 }
 
+/** Turns the repository's expected failures into field errors; anything else is a real bug and rethrown. */
+function toActionError(error: unknown): ExpenseActionResult | null {
+  if (error instanceof ExpenseCategoryNotFoundError) {
+    return { ok: false, errors: { categoryId: CATEGORY_NOT_FOUND } };
+  }
+  if (error instanceof InvalidExpenseParentError) {
+    return { ok: false, errors: { parentId: error.message } };
+  }
+  return null;
+}
+
 export async function createExpense(input: unknown): Promise<ExpenseActionResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: SESSION_EXPIRED };
@@ -30,9 +45,8 @@ export async function createExpense(input: unknown): Promise<ExpenseActionResult
   try {
     await createExpenseRepository(getDb()).create(user.id, parsed.value);
   } catch (error) {
-    if (error instanceof ExpenseCategoryNotFoundError) {
-      return { ok: false, errors: { categoryId: CATEGORY_NOT_FOUND } };
-    }
+    const mapped = toActionError(error);
+    if (mapped) return mapped;
     throw error;
   }
   refresh();
@@ -50,11 +64,22 @@ export async function updateExpense(id: string, input: unknown): Promise<Expense
     const updated = await createExpenseRepository(getDb()).update(user.id, id, parsed.value);
     if (!updated) return { ok: false, message: NOT_FOUND };
   } catch (error) {
-    if (error instanceof ExpenseCategoryNotFoundError) {
-      return { ok: false, errors: { categoryId: CATEGORY_NOT_FOUND } };
-    }
+    const mapped = toActionError(error);
+    if (mapped) return mapped;
     throw error;
   }
+  refresh();
+  return { ok: true };
+}
+
+/** Makes an expense that was paid with another one stand on its own again. */
+export async function unlinkExpense(id: string): Promise<ExpenseActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+  if (!isUuid(id)) return { ok: false, message: NOT_FOUND };
+
+  const done = await createExpenseRepository(getDb()).unlink(user.id, id);
+  if (!done) return { ok: false, message: NOT_FOUND };
   refresh();
   return { ok: true };
 }

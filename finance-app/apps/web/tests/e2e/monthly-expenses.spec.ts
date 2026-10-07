@@ -17,7 +17,16 @@ const packageDir = fileURLToPath(new URL("../../../../packages/db", import.meta.
 const runId = Date.now().toString(36);
 
 // Each test uses its own month so totals are isolated from each other.
-const MONTHS = { basic: "2031-03", late: "2031-04", edit: "2031-05", privacy: "2031-06", guard: "2031-07" };
+const MONTHS = {
+  basic: "2031-03",
+  late: "2031-04",
+  edit: "2031-05",
+  privacy: "2031-06",
+  guard: "2031-07",
+  link: "2031-08",
+  linkNext: "2031-09",
+  linkDelete: "2031-10",
+};
 
 function seedUser(user: { email: string; username: string }) {
   execFileSync(
@@ -73,7 +82,15 @@ async function openMonth(page: Page, period: string) {
 }
 
 /** `paidOn: null` leaves the expense pending (not paid yet). */
-type ExpenseFields = { category: string; amount: string; paidOn: string | null; period: string; note?: string };
+type ExpenseFields = {
+  category: string;
+  amount: string;
+  paidOn: string | null;
+  period: string;
+  note?: string;
+  /** Category name of the expense this one was paid with (it must already exist in that month). */
+  paidWith?: string;
+};
 
 function monthOf(offset: number): string {
   const date = new Date();
@@ -93,6 +110,11 @@ async function addExpense(page: Page, fields: ExpenseFields) {
     await dialog.getByLabel("Date paid").fill(fields.paidOn);
   }
   await dialog.getByLabel("Counts toward month").fill(fields.period);
+  if (fields.paidWith) {
+    const select = dialog.getByLabel("Paid with (optional)");
+    const value = await select.locator("option", { hasText: fields.paidWith }).getAttribute("value");
+    await select.selectOption(value!);
+  }
   if (fields.note) await dialog.getByLabel("Note (optional)").fill(fields.note);
   await dialog.getByRole("button", { name: "Add expense" }).click();
   await expect(dialog).toBeHidden();
@@ -324,4 +346,139 @@ test("copy from last month is only offered for the current month", async ({ page
 
   await openMonth(page, monthOf(1));
   await expect(page.getByRole("button", { name: "Copy from last month" })).toHaveCount(0);
+});
+
+test("an expense paid with another is included in it, not added twice, and can become independent", async ({
+  page,
+}) => {
+  const card = `Card ${runId}`;
+  const netflix = `Netflix ${runId}`;
+  await signIn(page, OWNER.email);
+  await createCategory(page, card);
+  await createCategory(page, netflix);
+
+  await openMonth(page, MONTHS.link);
+  await addExpense(page, { category: card, amount: "200000", paidOn: "2031-08-05", period: MONTHS.link });
+  await addExpense(page, {
+    category: netflix,
+    amount: "38000",
+    paidOn: null,
+    period: MONTHS.link,
+    paidWith: card,
+  });
+
+  // Netflix is inside the card's $200.000, so the month still totals $200.000.
+  await expect(page.getByTestId("month-total")).toContainText("200.000");
+  await expect(page.getByTestId("month-total")).not.toContainText("238.000");
+  await expect(page.getByText("Includes", { exact: false })).toContainText("38.000");
+  await expect(page.getByText(`Paid with ${card}`)).toBeVisible();
+  await expect(page.getByTestId("month-pending")).toContainText("0");
+
+  // Netflix is paid on its own from now on: it counts by itself.
+  await page.getByRole("button", { name: `Make ${netflix} independent` }).click();
+  await expect(page.getByTestId("month-total")).toContainText("238.000");
+  await expect(page.getByText(`Paid with ${card}`)).toHaveCount(0);
+  await expect(page.getByTestId("month-pending")).toContainText("38.000");
+
+  await deleteExpense(page, netflix);
+  await deleteExpense(page, card);
+  await deleteCategory(page, netflix);
+  await deleteCategory(page, card);
+});
+
+test("the same expense can be paid with a card one month and on its own the next", async ({ page }) => {
+  const card = `Card2 ${runId}`;
+  const netflix = `Netflix2 ${runId}`;
+  await signIn(page, OWNER.email);
+  await createCategory(page, card);
+  await createCategory(page, netflix);
+
+  await openMonth(page, MONTHS.link);
+  await addExpense(page, { category: card, amount: "150000", paidOn: "2031-08-05", period: MONTHS.link });
+  await addExpense(page, { category: netflix, amount: "38000", paidOn: null, period: MONTHS.link, paidWith: card });
+  await expect(page.getByTestId("month-total")).toContainText("150.000");
+
+  await openMonth(page, MONTHS.linkNext);
+  await addExpense(page, { category: netflix, amount: "38000", paidOn: "2031-09-02", period: MONTHS.linkNext });
+  await expect(page.getByTestId("month-total")).toContainText("38.000");
+  await expect(page.getByText(/Paid with/)).toHaveCount(0);
+
+  await deleteExpense(page, netflix);
+  await openMonth(page, MONTHS.link);
+  await deleteExpense(page, netflix);
+  await deleteExpense(page, card);
+  await deleteCategory(page, netflix);
+  await deleteCategory(page, card);
+});
+
+test("deleting the parent frees its linked expenses, and a parent cannot itself be paid with another", async ({
+  page,
+}) => {
+  const card = `Card3 ${runId}`;
+  const netflix = `Netflix3 ${runId}`;
+  await signIn(page, OWNER.email);
+  await createCategory(page, card);
+  await createCategory(page, netflix);
+
+  await openMonth(page, MONTHS.linkDelete);
+  await addExpense(page, { category: card, amount: "100000", paidOn: "2031-10-03", period: MONTHS.linkDelete });
+  await addExpense(page, {
+    category: netflix,
+    amount: "38000",
+    paidOn: null,
+    period: MONTHS.linkDelete,
+    paidWith: card,
+  });
+
+  // The card has an expense paid with it, so it cannot be paid with another one.
+  await page.getByRole("button", { name: `Edit ${card} expense` }).click();
+  const editDialog = page.getByRole("dialog");
+  await expect(editDialog.getByLabel("Paid with (optional)")).toBeDisabled();
+  await editDialog.getByRole("button", { name: "Cancel" }).click();
+
+  // Deleting it warns, then leaves Netflix standing on its own.
+  await page.getByRole("button", { name: `Delete ${card} expense` }).click();
+  const deleteDialog = page.getByRole("dialog");
+  await expect(deleteDialog.getByText(/1 linked expense will become independent/)).toBeVisible();
+  await deleteDialog.getByRole("button", { name: "Delete expense" }).click();
+  await expect(page.getByTestId("month-total")).toContainText("38.000");
+  await expect(page.getByText(netflix, { exact: true })).toBeVisible();
+
+  await deleteExpense(page, netflix);
+  await deleteCategory(page, netflix);
+  await deleteCategory(page, card);
+});
+
+test("copying a parent and its linked expense together keeps them linked", async ({ page }) => {
+  const card = `Card4 ${runId}`;
+  const netflix = `Netflix4 ${runId}`;
+  const lastMonth = monthOf(-1);
+  await signIn(page, OWNER.email);
+  await createCategory(page, card);
+  await createCategory(page, netflix);
+
+  await openMonth(page, lastMonth);
+  await addExpense(page, { category: card, amount: "120000", paidOn: `${lastMonth}-05`, period: lastMonth });
+  await addExpense(page, { category: netflix, amount: "38000", paidOn: null, period: lastMonth, paidWith: card });
+
+  await page.goto("/monthly-expenses");
+  await page.getByRole("button", { name: "Copy from last month" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("checkbox", { name: new RegExp(card) }).check();
+  await dialog.getByRole("checkbox", { name: new RegExp(netflix) }).check();
+  await dialog.getByRole("button", { name: "Add 2 expenses" }).click();
+  await expect(dialog).toBeHidden();
+
+  // Both arrive in this month, Netflix still under the card, and only the card is counted.
+  await expect(page.getByTestId("month-total")).toContainText("120.000");
+  await expect(page.getByText(`Paid with ${card}`)).toBeVisible();
+
+  // Clean up the copies, then last month.
+  await deleteExpense(page, netflix);
+  await deleteExpense(page, card);
+  await openMonth(page, lastMonth);
+  await deleteExpense(page, netflix);
+  await deleteExpense(page, card);
+  await deleteCategory(page, netflix);
+  await deleteCategory(page, card);
 });

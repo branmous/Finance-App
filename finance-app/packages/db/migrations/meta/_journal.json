@@ -36,6 +36,13 @@
       "when": 1791321600614,
       "tag": "0004_expenses_paid_on_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791408897382,
+      "tag": "0005_expenses_parent",
+      "breakpoints": true
     }
   ]
 }

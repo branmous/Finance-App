@@ -14,6 +14,11 @@ export type ExpenseInput = {
    */
   paidOn: string | null;
   note: string;
+  /**
+   * The expense this one was paid with (e.g. Netflix paid with the credit card), or null when it
+   * stands alone. Its amount is already included in the parent's, so it is not counted twice.
+   */
+  parentId: string | null;
 };
 
 export type ExpenseInputErrors = Partial<Record<keyof ExpenseInput, string>>;
@@ -57,6 +62,9 @@ export function validateExpenseInput(input: unknown): ExpenseValidationResult {
   const blankPaidOn = raw.paidOn == null || (typeof raw.paidOn === "string" && raw.paidOn.trim() === "");
   if (!blankPaidOn && !isValidDate(raw.paidOn)) errors.paidOn = "Enter a valid payment date.";
 
+  const blankParent = raw.parentId == null || (typeof raw.parentId === "string" && raw.parentId.trim() === "");
+  if (!blankParent && !isUuid(raw.parentId)) errors.parentId = "Choose a valid expense to pay with.";
+
   const note = typeof raw.note === "string" ? raw.note.trim() : "";
   if (note.length > EXPENSE_NOTE_MAX_LENGTH) {
     errors.note = `Note must be at most ${EXPENSE_NOTE_MAX_LENGTH} characters.`;
@@ -72,6 +80,7 @@ export function validateExpenseInput(input: unknown): ExpenseValidationResult {
       period: raw.period as string,
       paidOn: blankPaidOn ? null : (raw.paidOn as string),
       note,
+      parentId: blankParent ? null : (raw.parentId as string),
     },
   };
 }
