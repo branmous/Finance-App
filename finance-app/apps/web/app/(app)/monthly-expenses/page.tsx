@@ -51,6 +51,7 @@ export default async function MonthlyExpensesPage({ searchParams }: Props) {
     period: row.period,
     paidOn: row.paidOn,
     note: row.note,
+    parentId: row.parentId,
     categoryName: row.categoryName,
     categoryColor: row.categoryColor as CategoryColor,
     categoryIcon: row.categoryIcon as CategoryIcon,

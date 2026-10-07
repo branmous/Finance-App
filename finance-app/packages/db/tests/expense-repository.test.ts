@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { CategoryInUseError, createCategoryRepository } from "../src/category-repository";
-import { ExpenseCategoryNotFoundError, createExpenseRepository } from "../src/expense-repository";
+import {
+  ExpenseCategoryNotFoundError,
+  InvalidExpenseParentError,
+  createExpenseRepository,
+} from "../src/expense-repository";
 import { createUserRepository } from "../src/user-repository";
 import { createTestDb } from "./helpers";
 
@@ -21,6 +25,7 @@ async function setup() {
     period: "2026-09",
     paidOn: "2026-10-03",
     note: "",
+    parentId: null as string | null,
   };
   return { repo: createExpenseRepository(db), categories, alice, bob, rent, bobCategory, input };
 }
@@ -194,6 +199,151 @@ describe("expense repository", () => {
     await expect(repo.copyToPeriod(bob.id, [aliceExpense.id], "2026-10")).resolves.toBe(0);
     await expect(repo.listByPeriod(bob.id, "2026-10")).resolves.toEqual([]);
     await expect(repo.listByPeriod(alice.id, "2026-10")).resolves.toEqual([]);
+  });
+
+  describe("paid with another expense (parent / child)", () => {
+    const card = { amountMinor: 200000, note: "Credit card" };
+    const netflix = { amountMinor: 38000, note: "Netflix", paidOn: null };
+
+    it("links an expense to a parent from the same month", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      expect(child.parentId).toBe(parent.id);
+      const listed = await repo.listByPeriod(alice.id, "2026-09");
+      expect(listed.find((row) => row.id === child.id)?.parentId).toBe(parent.id);
+      expect(listed.find((row) => row.id === parent.id)?.parentId).toBeNull();
+    });
+
+    it("counts only top-level expenses, since the child is already inside the parent's amount", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      await expect(repo.totalByPeriod(alice.id, "2026-09")).resolves.toBe(200000);
+      await expect(repo.summaryByPeriod(alice.id, "2026-09")).resolves.toEqual({
+        total: 200000,
+        paid: 200000,
+        pending: 0,
+      });
+    });
+
+    it("rejects a parent from a different month", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card, period: "2026-08" });
+
+      await expect(repo.create(alice.id, { ...input, parentId: parent.id })).rejects.toBeInstanceOf(
+        InvalidExpenseParentError,
+      );
+    });
+
+    it("rejects a parent that does not exist or belongs to someone else", async () => {
+      const { repo, alice, bob, bobCategory, input } = await setup();
+      const bobExpense = await repo.create(bob.id, { ...input, categoryId: bobCategory.id });
+
+      await expect(repo.create(alice.id, { ...input, parentId: bobExpense.id })).rejects.toBeInstanceOf(
+        InvalidExpenseParentError,
+      );
+      await expect(
+        repo.create(alice.id, { ...input, parentId: "00000000-0000-4000-8000-000000000000" }),
+      ).rejects.toBeInstanceOf(InvalidExpenseParentError);
+    });
+
+    it("allows only one level of nesting", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      // A child cannot be a parent.
+      await expect(repo.create(alice.id, { ...input, parentId: child.id })).rejects.toBeInstanceOf(
+        InvalidExpenseParentError,
+      );
+      // A parent that has children cannot become a child.
+      const other = await repo.create(alice.id, { ...input, amountMinor: 1 });
+      await expect(repo.update(alice.id, parent.id, { ...input, ...card, parentId: other.id })).rejects.toBeInstanceOf(
+        InvalidExpenseParentError,
+      );
+    });
+
+    it("never lets an expense be its own parent", async () => {
+      const { repo, alice, input } = await setup();
+      const expense = await repo.create(alice.id, input);
+
+      await expect(repo.update(alice.id, expense.id, { ...input, parentId: expense.id })).rejects.toBeInstanceOf(
+        InvalidExpenseParentError,
+      );
+    });
+
+    it("refuses to move a linked expense, or a parent with children, to another month", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      await expect(
+        repo.update(alice.id, child.id, { ...input, ...netflix, period: "2026-10", parentId: parent.id }),
+      ).rejects.toBeInstanceOf(InvalidExpenseParentError);
+      await expect(repo.update(alice.id, parent.id, { ...input, ...card, period: "2026-10" })).rejects.toBeInstanceOf(
+        InvalidExpenseParentError,
+      );
+      // Unlinking first makes the move possible.
+      await expect(
+        repo.update(alice.id, child.id, { ...input, ...netflix, period: "2026-10", parentId: null }),
+      ).resolves.toMatchObject({ period: "2026-10", parentId: null });
+    });
+
+    it("makes a child independent, so it counts on its own", async () => {
+      const { repo, alice, bob, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      await expect(repo.unlink(bob.id, child.id)).resolves.toBe(false);
+      await expect(repo.unlink(alice.id, child.id)).resolves.toBe(true);
+
+      await expect(repo.summaryByPeriod(alice.id, "2026-09")).resolves.toEqual({
+        total: 238000,
+        paid: 200000,
+        pending: 38000,
+      });
+    });
+
+    it("frees the children when the parent is deleted", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      await expect(repo.remove(alice.id, parent.id)).resolves.toBe(true);
+
+      const [left] = await repo.listByPeriod(alice.id, "2026-09");
+      expect(left).toMatchObject({ id: child.id, parentId: null });
+      await expect(repo.totalByPeriod(alice.id, "2026-09")).resolves.toBe(38000);
+    });
+
+    it("keeps the link when parent and child are copied together", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      await expect(repo.copyToPeriod(alice.id, [parent.id, child.id], "2026-10")).resolves.toBe(2);
+
+      const copied = await repo.listByPeriod(alice.id, "2026-10");
+      const copiedParent = copied.find((row) => row.note === "Credit card")!;
+      const copiedChild = copied.find((row) => row.note === "Netflix")!;
+      expect(copiedChild.parentId).toBe(copiedParent.id);
+      expect(copiedParent.parentId).toBeNull();
+      await expect(repo.totalByPeriod(alice.id, "2026-10")).resolves.toBe(200000);
+    });
+
+    it("copies a child on its own as an independent expense", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, ...card });
+      const child = await repo.create(alice.id, { ...input, ...netflix, parentId: parent.id });
+
+      await expect(repo.copyToPeriod(alice.id, [child.id], "2026-10")).resolves.toBe(1);
+
+      const [copied] = await repo.listByPeriod(alice.id, "2026-10");
+      expect(copied).toMatchObject({ note: "Netflix", parentId: null });
+    });
   });
 
   it("blocks deleting a category that has expenses, and allows it once they are gone", async () => {

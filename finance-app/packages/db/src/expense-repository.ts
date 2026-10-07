@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
+
 import type { ExpenseInput } from "@finance-app/core";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { categories } from "../schema/categories";
 import { expenses } from "../schema/expenses";
@@ -16,6 +18,8 @@ export type ExpenseWithCategory = {
   /** null while the expense is tracked but not paid yet. */
   paidOn: string | null;
   note: string;
+  /** The expense this one was paid with, or null when it stands alone. */
+  parentId: string | null;
   categoryName: string;
   categoryColor: string;
   categoryIcon: string;
@@ -28,6 +32,14 @@ export class ExpenseCategoryNotFoundError extends Error {
   constructor() {
     super("Category not found");
     this.name = "ExpenseCategoryNotFoundError";
+  }
+}
+
+/** The chosen "paid with" expense breaks a linking rule; the message is safe to show. */
+export class InvalidExpenseParentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidExpenseParentError";
   }
 }
 
@@ -45,6 +57,51 @@ export function createExpenseRepository(db: DbClient) {
     if (!row) throw new ExpenseCategoryNotFoundError();
   }
 
+  /**
+   * Linking rules: the parent is the user's own, from the same month and not a child itself
+   * (one level only); an expense cannot be its own parent; an expense with children cannot become
+   * a child nor move to another month. A foreign key alone enforces none of this.
+   */
+  async function assertValidParent(userId: string, input: ExpenseInput, selfId?: string): Promise<void> {
+    if (selfId) {
+      const [current] = await db
+        .select({ period: expenses.period })
+        .from(expenses)
+        .where(and(eq(expenses.id, selfId), eq(expenses.userId, userId)));
+      const [child] = current
+        ? await db
+            .select({ id: expenses.id })
+            .from(expenses)
+            .where(and(eq(expenses.parentId, selfId), eq(expenses.userId, userId)))
+            .limit(1)
+        : [];
+      if (current && child) {
+        if (input.parentId) {
+          throw new InvalidExpenseParentError("This expense has linked expenses, so it cannot be paid with another.");
+        }
+        if (current.period !== input.period) {
+          throw new InvalidExpenseParentError("Make its linked expenses independent before moving it to another month.");
+        }
+      }
+    }
+
+    if (!input.parentId) return;
+    if (input.parentId === selfId) {
+      throw new InvalidExpenseParentError("An expense cannot be paid with itself.");
+    }
+    const [parent] = await db
+      .select({ period: expenses.period, parentId: expenses.parentId })
+      .from(expenses)
+      .where(and(eq(expenses.id, input.parentId), eq(expenses.userId, userId)));
+    if (!parent) throw new InvalidExpenseParentError("The expense to pay with no longer exists.");
+    if (parent.parentId) {
+      throw new InvalidExpenseParentError("Choose an expense that is not itself paid with another.");
+    }
+    if (parent.period !== input.period) {
+      throw new InvalidExpenseParentError("Both expenses must belong to the same month.");
+    }
+  }
+
   return {
     async listByPeriod(userId: string, period: string): Promise<ExpenseWithCategory[]> {
       return db
@@ -56,6 +113,7 @@ export function createExpenseRepository(db: DbClient) {
           period: expenses.period,
           paidOn: expenses.paidOn,
           note: expenses.note,
+          parentId: expenses.parentId,
           categoryName: categories.name,
           categoryColor: categories.color,
           categoryIcon: categories.icon,
@@ -67,6 +125,7 @@ export function createExpenseRepository(db: DbClient) {
         .orderBy(sql`${expenses.paidOn} is null desc`, desc(expenses.paidOn), desc(expenses.createdAt));
     },
 
+    // Totals count only top-level expenses: a child is already inside its parent's amount.
     async summaryByPeriod(userId: string, period: string): Promise<PeriodSummary> {
       const [row] = await db
         .select({
@@ -75,7 +134,7 @@ export function createExpenseRepository(db: DbClient) {
           pending: sql<string>`coalesce(sum(${expenses.amountMinor}) filter (where ${expenses.paidOn} is null), 0)`,
         })
         .from(expenses)
-        .where(and(eq(expenses.userId, userId), eq(expenses.period, period)));
+        .where(and(eq(expenses.userId, userId), eq(expenses.period, period), isNull(expenses.parentId)));
       return { total: Number(row?.total ?? 0), paid: Number(row?.paid ?? 0), pending: Number(row?.pending ?? 0) };
     },
 
@@ -83,12 +142,13 @@ export function createExpenseRepository(db: DbClient) {
       const [row] = await db
         .select({ total: sql<string>`coalesce(sum(${expenses.amountMinor}), 0)` })
         .from(expenses)
-        .where(and(eq(expenses.userId, userId), eq(expenses.period, period)));
+        .where(and(eq(expenses.userId, userId), eq(expenses.period, period), isNull(expenses.parentId)));
       return Number(row?.total ?? 0);
     },
 
     async create(userId: string, input: ExpenseInput): Promise<ExpenseRow> {
       await assertOwnCategory(userId, input.categoryId);
+      await assertValidParent(userId, input);
       const [row] = await db
         .insert(expenses)
         .values({ ...input, userId })
@@ -101,6 +161,7 @@ export function createExpenseRepository(db: DbClient) {
 
     async update(userId: string, id: string, input: ExpenseInput): Promise<ExpenseRow | null> {
       await assertOwnCategory(userId, input.categoryId);
+      await assertValidParent(userId, input, id);
       const [row] = await db
         .update(expenses)
         .set({ ...input, updatedAt: new Date() })
@@ -109,9 +170,20 @@ export function createExpenseRepository(db: DbClient) {
       return row ?? null;
     },
 
+    /** Makes a child independent again; it then counts on its own in the month total. */
+    async unlink(userId: string, id: string): Promise<boolean> {
+      const rows = await db
+        .update(expenses)
+        .set({ parentId: null, updatedAt: new Date() })
+        .where(and(eq(expenses.id, id), eq(expenses.userId, userId)))
+        .returning();
+      return rows.length > 0;
+    },
+
     /**
      * Copies the given expenses (only the ones the user owns) into `period` as pending: same
-     * category, amount and note, no paid date. One INSERT ... SELECT, so it is all or nothing.
+     * category, amount and note, no paid date. A child is linked to the copy of its parent only
+     * when both are copied; otherwise it arrives independent. One INSERT, so it is all or nothing.
      * Returns how many were copied.
      */
     async copyToPeriod(userId: string, ids: string[], period: string): Promise<number> {
@@ -121,10 +193,12 @@ export function createExpenseRepository(db: DbClient) {
         .from(expenses)
         .where(and(eq(expenses.userId, userId), inArray(expenses.id, ids)));
       if (sources.length === 0) return 0;
+      const newIds = new Map(sources.map((source) => [source.id, randomUUID()]));
       const rows = await db
         .insert(expenses)
         .values(
           sources.map((source) => ({
+            id: newIds.get(source.id)!,
             userId,
             categoryId: source.categoryId,
             amountMinor: source.amountMinor,
@@ -132,6 +206,7 @@ export function createExpenseRepository(db: DbClient) {
             period,
             paidOn: null,
             note: source.note,
+            parentId: source.parentId ? (newIds.get(source.parentId) ?? null) : null,
           })),
         )
         .returning();

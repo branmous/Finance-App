@@ -1,4 +1,4 @@
-import { bigint, date, index, uuid, varchar, pgTable } from "drizzle-orm/pg-core";
+import { bigint, date, index, uuid, varchar, pgTable, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { categories } from "./categories";
 import { sharedColumns } from "./shared-columns";
@@ -24,9 +24,13 @@ export const expenses = pgTable(
     // Day it was actually paid ("YYYY-MM-DD"); null while the expense is tracked but still pending.
     paidOn: date("paid_on", { mode: "string" }),
     note: varchar("note", { length: 140 }).notNull().default(""),
+    // The expense this one was paid with (e.g. Netflix on the credit card). Its amount is already
+    // inside the parent's. SET NULL: deleting the parent leaves the child standing on its own.
+    parentId: uuid("parent_id").references((): AnyPgColumn => expenses.id, { onDelete: "set null" }),
   },
   (table) => ({
     userPeriodIdx: index("expenses_user_id_period_idx").on(table.userId, table.period),
     categoryIdx: index("expenses_category_id_idx").on(table.categoryId),
+    parentIdx: index("expenses_parent_id_idx").on(table.parentId),
   }),
 );

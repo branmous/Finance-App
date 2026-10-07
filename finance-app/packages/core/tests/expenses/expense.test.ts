@@ -12,7 +12,7 @@ const valid = {
 
 describe("validateExpenseInput", () => {
   it("accepts valid input and trims the note", () => {
-    expect(validateExpenseInput(valid)).toEqual({ ok: true, value: { ...valid, note: "Rent" } });
+    expect(validateExpenseInput(valid)).toEqual({ ok: true, value: { ...valid, note: "Rent", parentId: null } });
   });
 
   it("allows paying in a different month than the period it belongs to", () => {
@@ -26,6 +26,21 @@ describe("validateExpenseInput", () => {
 
   it.each([null, undefined, "", "   "])("treats paid date %j as not paid yet", (paidOn) => {
     expect(validateExpenseInput({ ...valid, paidOn })).toMatchObject({ ok: true, value: { paidOn: null } });
+  });
+
+  it.each([null, undefined, "", "   "])("treats parent %j as independent", (parentId) => {
+    expect(validateExpenseInput({ ...valid, parentId })).toMatchObject({ ok: true, value: { parentId: null } });
+  });
+
+  it("keeps a valid parent id", () => {
+    const parentId = "9a1c2b7e-1a2b-4c3d-8e9f-0a1b2c3d4e5f";
+    expect(validateExpenseInput({ ...valid, parentId })).toMatchObject({ ok: true, value: { parentId } });
+  });
+
+  it.each(["nope", 42, {}])("rejects parent %j", (parentId) => {
+    const result = validateExpenseInput({ ...valid, parentId });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.parentId).toBeTruthy();
   });
 
   it("recognizes uuids", () => {
