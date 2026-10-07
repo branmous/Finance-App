@@ -1,5 +1,5 @@
-import { CATEGORY_TYPES, type CategoryType } from "@finance-app/core";
-import { createCategoryRepository } from "@finance-app/db";
+import { CATEGORY_TYPES, currentPeriod, formatCop, formatPeriod, type CategoryType } from "@finance-app/core";
+import { createCategoryRepository, createExpenseRepository } from "@finance-app/db";
 import Link from "next/link";
 
 import { Guilloche } from "@/components/guilloche";
@@ -18,18 +18,19 @@ const TYPE_SHADES: Record<CategoryType, string> = {
 };
 
 const PENDING_WIDGETS = [
-  { title: "Spent this month", note: "Your total will show here." },
   { title: "Where it went", note: "A breakdown by category." },
   { title: "Latest expenses", note: "Your most recent entries." },
 ];
 
 /**
- * Dashboard shell. Category figures are real; spending widgets are marked as pending
- * until the expenses module exists, so nothing here is invented data.
+ * Dashboard shell. Category figures and this month's total are real; the remaining
+ * spending widgets are marked as pending, so nothing here is invented data.
  */
 export default async function DashboardPage() {
   const user = await getSessionUser();
+  const period = currentPeriod();
   const categories = user ? await createCategoryRepository(getDb()).list(user.id) : [];
+  const monthTotal = user ? await createExpenseRepository(getDb()).totalByPeriod(user.id, period) : 0;
 
   const counts = CATEGORY_TYPES.map((type) => ({
     type,
@@ -90,10 +91,21 @@ export default async function DashboardPage() {
 
       <section aria-labelledby="coming-soon" className="mt-10">
         <h2 id="coming-soon" className="text-xl font-semibold">
-          Coming with expenses
+          This month
         </h2>
-        <p className="mt-1 text-sm text-paper-muted">These panels fill in once you start recording expenses.</p>
+        <p className="mt-1 text-sm text-paper-muted">The remaining panels fill in as the app grows.</p>
         <ul className="mt-4 grid gap-4 sm:grid-cols-3">
+          <li className="rounded-panel border border-paper-line p-5">
+            <h3 className="text-base font-semibold">Spent in {formatPeriod(period)}</h3>
+            <p className="mt-1 text-sm text-paper-muted">Total of expenses counted toward this month.</p>
+            <p className="mt-6 font-display text-3xl font-semibold">{formatCop(monthTotal)}</p>
+            <Link
+              href="/monthly-expenses"
+              className="mt-3 inline-block text-sm font-semibold text-leaf underline underline-offset-4"
+            >
+              View monthly expenses
+            </Link>
+          </li>
           {PENDING_WIDGETS.map((widget) => (
             <li key={widget.title} className="rounded-panel border border-dashed border-paper-line p-5">
               <h3 className="text-base font-semibold">{widget.title}</h3>

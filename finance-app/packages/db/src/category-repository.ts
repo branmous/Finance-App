@@ -13,11 +13,23 @@ export class DuplicateCategoryNameError extends Error {
   }
 }
 
+export class CategoryInUseError extends Error {
+  constructor() {
+    super("This category has expenses and cannot be deleted");
+    this.name = "CategoryInUseError";
+  }
+}
+
 const UNIQUE_VIOLATION = "23505";
+const FOREIGN_KEY_VIOLATION = "23503";
+
+function hasPgCode(error: unknown, code: string): boolean {
+  const candidate = error as { code?: string; cause?: { code?: string } } | null;
+  return candidate?.code === code || candidate?.cause?.code === code;
+}
 
 function isUniqueViolation(error: unknown): boolean {
-  const candidate = error as { code?: string; cause?: { code?: string } } | null;
-  return candidate?.code === UNIQUE_VIOLATION || candidate?.cause?.code === UNIQUE_VIOLATION;
+  return hasPgCode(error, UNIQUE_VIOLATION);
 }
 
 /**
@@ -65,11 +77,17 @@ export function createCategoryRepository(db: DbClient) {
     },
 
     async remove(userId: string, id: string): Promise<boolean> {
-      const rows = await db
-        .delete(categories)
-        .where(and(eq(categories.id, id), eq(categories.userId, userId)))
-        .returning();
-      return rows.length > 0;
+      try {
+        const rows = await db
+          .delete(categories)
+          .where(and(eq(categories.id, id), eq(categories.userId, userId)))
+          .returning();
+        return rows.length > 0;
+      } catch (error) {
+        // expenses.category_id is ON DELETE RESTRICT: keep history instead of losing it.
+        if (hasPgCode(error, FOREIGN_KEY_VIOLATION)) throw new CategoryInUseError();
+        throw error;
+      }
     },
   };
 }

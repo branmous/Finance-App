@@ -26,3 +26,6 @@ export type {
   CategoryType,
   CategoryValidationResult,
 } from "./categories/category";
+export { EXPENSE_NOTE_MAX_LENGTH, isUuid, validateExpenseInput } from "./expenses/expense";
+export type { ExpenseInput, ExpenseInputErrors, ExpenseValidationResult } from "./expenses/expense";
+export { currentPeriod, formatCop, formatPeriod, isValidPeriod, shiftPeriod } from "./expenses/period";

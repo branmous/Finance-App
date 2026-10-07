@@ -2,7 +2,10 @@ import type { CategoryIcon } from "@finance-app/core/categories";
 import type { SVGProps } from "react";
 
 // 24x24 stroke icons. Category icons are keyed by the closed list in @finance-app/core.
-const PATHS: Record<CategoryIcon | "tags" | "logout" | "plus" | "pencil" | "trash" | "menu" | "close", string> = {
+const PATHS: Record<
+  CategoryIcon | "tags" | "logout" | "plus" | "pencil" | "trash" | "menu" | "close" | "chevronLeft" | "chevronRight",
+  string
+> = {
   repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3",
   home: "M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10",
   plane: "M2 16l20-8-6 14-4-6-6-2zM12 16l10-8",
@@ -21,6 +24,8 @@ const PATHS: Record<CategoryIcon | "tags" | "logout" | "plus" | "pencil" | "tras
   trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
   menu: "M4 7h16M4 12h16M4 17h16",
   close: "M6 6l12 12M18 6L6 18",
+  chevronLeft: "M15 5l-7 7 7 7",
+  chevronRight: "M9 5l7 7-7 7",
 };
 
 export type IconName = keyof typeof PATHS;

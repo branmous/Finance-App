@@ -9,7 +9,10 @@ import { Icon } from "@/components/ui/icon";
 
 type AppShellProps = { userName: string; userEmail: string; children: ReactNode };
 
-const NAV_ITEMS = [{ href: "/categories", label: "Categories", icon: "tags" }] as const;
+const NAV_ITEMS = [
+  { href: "/monthly-expenses", label: "Monthly expenses", icon: "receipt" },
+  { href: "/categories", label: "Categories", icon: "tags" },
+] as const;
 
 export function AppShell({ userName, userEmail, children }: AppShellProps) {
   const pathname = usePathname();
