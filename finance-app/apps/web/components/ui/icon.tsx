@@ -3,7 +3,7 @@ import type { SVGProps } from "react";
 
 // 24x24 stroke icons. Category icons are keyed by the closed list in @finance-app/core.
 const PATHS: Record<
-  CategoryIcon | "tags" | "logout" | "plus" | "pencil" | "trash" | "menu" | "close" | "chevronLeft" | "chevronRight",
+  CategoryIcon | "tags" | "landmark" | "check" | "logout" | "plus" | "pencil" | "trash" | "menu" | "close" | "chevronLeft" | "chevronRight",
   string
 > = {
   repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3",
@@ -18,6 +18,8 @@ const PATHS: Record<
   book: "M4 4h6a2 2 0 012 2v14a2 2 0 00-2-2H4V4zM20 4h-6a2 2 0 00-2 2v14a2 2 0 012-2h6V4z",
   tag: "M3 12V4h8l10 10-8 8L3 12zM7.5 8h.01",
   tags: "M3 12V4h8l10 10-8 8L3 12zM7.5 8h.01",
+  landmark: "M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18",
+  check: "M5 12l5 5L20 7",
   logout: "M9 4H5a1 1 0 00-1 1v14a1 1 0 001 1h4M16 8l4 4-4 4M20 12H9",
   plus: "M12 5v14M5 12h14",
   pencil: "M4 20l1-4L16 5l3 3L8 19l-4 1zM14 7l3 3",

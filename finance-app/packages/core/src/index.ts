@@ -29,3 +29,19 @@ export type {
 export { EXPENSE_NOTE_MAX_LENGTH, isUuid, validateExpenseInput } from "./expenses/expense";
 export type { ExpenseInput, ExpenseInputErrors, ExpenseValidationResult } from "./expenses/expense";
 export { currentPeriod, formatCop, formatPeriod, isValidPeriod, shiftPeriod } from "./expenses/period";
+export {
+  DEBT_MAX_INSTALLMENTS,
+  DEBT_NAME_MAX_LENGTH,
+  DEBT_NOTE_MAX_LENGTH,
+  debtProgress,
+  installmentPeriods,
+  monthsBetween,
+  validateDebtInput,
+} from "./debts/debt";
+export type {
+  DebtInput,
+  DebtInputErrors,
+  DebtProgress,
+  DebtStatus,
+  DebtValidationResult,
+} from "./debts/debt";

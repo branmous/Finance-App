@@ -19,3 +19,11 @@ export {
   createExpenseRepository,
 } from "./expense-repository";
 export type { ExpenseRepository, ExpenseRow, ExpenseWithCategory, PeriodSummary } from "./expense-repository";
+export { debts } from "../schema/debts";
+export {
+  DebtCategoryNotFoundError,
+  DebtPeriodOutOfRangeError,
+  DebtRangeError,
+  createDebtRepository,
+} from "./debt-repository";
+export type { DebtRepository, DebtRow, DebtWithProgress } from "./debt-repository";
