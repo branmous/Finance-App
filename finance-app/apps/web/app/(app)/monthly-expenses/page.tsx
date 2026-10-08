@@ -6,7 +6,7 @@ import {
   type CategoryIcon,
   type CategoryType,
 } from "@finance-app/core";
-import { createCategoryRepository, createExpenseRepository } from "@finance-app/db";
+import { createCategoryRepository, createExpenseRepository, createIncomeRepository } from "@finance-app/db";
 
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -28,15 +28,16 @@ export default async function MonthlyExpensesPage({ searchParams }: Props) {
   const user = await getSessionUser();
   const db = getDb();
   const expenseRepo = createExpenseRepository(db);
-  const [rows, summary, categoryRows, lastMonthRows] = user
+  const [rows, summary, categoryRows, lastMonthRows, incomeTotal] = user
     ? await Promise.all([
         expenseRepo.listByPeriod(user.id, period),
         expenseRepo.summaryByPeriod(user.id, period),
         createCategoryRepository(db).list(user.id),
         // Only the current month offers "copy from last month", so only then is it needed.
         isCurrentPeriod ? expenseRepo.listByPeriod(user.id, shiftPeriod(thisMonth, -1)) : Promise.resolve([]),
+        createIncomeRepository(db).totalByPeriod(user.id, period),
       ])
-    : [[], { total: 0, paid: 0, pending: 0 }, [], []];
+    : [[], { total: 0, paid: 0, pending: 0 }, [], [], 0];
 
   // The database stores these as plain strings; they were validated against the closed lists on write.
   const categories: CategoryOption[] = categoryRows.map((row) => ({
@@ -64,6 +65,7 @@ export default async function MonthlyExpensesPage({ searchParams }: Props) {
       expenses={rows.map(toItem)}
       lastMonthExpenses={lastMonthRows.map(toItem)}
       summary={summary}
+      incomeTotal={incomeTotal}
       categories={categories}
     />
   );

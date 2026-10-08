@@ -16,6 +16,7 @@ const NOT_FOUND = "This income no longer exists.";
 
 function refresh() {
   revalidatePath("/monthly-income");
+  revalidatePath("/monthly-expenses");
   revalidatePath("/");
 }
 

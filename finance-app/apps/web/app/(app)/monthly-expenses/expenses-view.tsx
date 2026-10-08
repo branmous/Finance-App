@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 
 import { deleteExpense, unlinkExpense } from "./actions";
+import { BalanceCard } from "./balance-card";
 import { CopyExpensesDialog } from "./copy-expenses-dialog";
 import { ExpenseFormDialog, type CategoryOption, type ExpenseItem } from "./expense-form-dialog";
 
@@ -22,6 +23,8 @@ type Props = {
   /** Previous month's expenses, offered for copying; only loaded for the current month. */
   lastMonthExpenses: ExpenseItem[];
   summary: PeriodSummary;
+  /** Income recorded for the month shown, in whole pesos. */
+  incomeTotal: number;
   categories: CategoryOption[];
 };
 
@@ -46,6 +49,7 @@ export function ExpensesView({
   expenses,
   lastMonthExpenses,
   summary,
+  incomeTotal,
   categories,
 }: Props) {
   // `undefined` = closed, `null` = creating, an item = editing.
@@ -212,6 +216,8 @@ export function ExpensesView({
           </div>
         </dl>
       </section>
+
+      <BalanceCard period={period} income={incomeTotal} spent={summary.total} paid={summary.paid} />
 
       <div className="mt-8">
         {!hasCategories ? (
