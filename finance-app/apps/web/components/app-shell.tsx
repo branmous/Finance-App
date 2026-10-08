@@ -11,6 +11,7 @@ type AppShellProps = { userName: string; userEmail: string; children: ReactNode 
 
 const NAV_ITEMS = [
   { href: "/monthly-expenses", label: "Monthly expenses", icon: "receipt" },
+  { href: "/debts", label: "Debts", icon: "landmark" },
   { href: "/categories", label: "Categories", icon: "tags" },
 ] as const;
 

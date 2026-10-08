@@ -1,6 +1,8 @@
-import { bigint, date, index, uuid, varchar, pgTable, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { bigint, date, index, uniqueIndex, uuid, varchar, pgTable, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 import { categories } from "./categories";
+import { debts } from "./debts";
 import { sharedColumns } from "./shared-columns";
 import { users } from "./users";
 
@@ -27,10 +29,16 @@ export const expenses = pgTable(
     // The expense this one was paid with (e.g. Netflix on the credit card). Its amount is already
     // inside the parent's. SET NULL: deleting the parent leaves the child standing on its own.
     parentId: uuid("parent_id").references((): AnyPgColumn => expenses.id, { onDelete: "set null" }),
+    // The debt this expense is an installment of. SET NULL: deleting a debt keeps what was paid.
+    debtId: uuid("debt_id").references(() => debts.id, { onDelete: "set null" }),
   },
   (table) => ({
     userPeriodIdx: index("expenses_user_id_period_idx").on(table.userId, table.period),
     categoryIdx: index("expenses_category_id_idx").on(table.categoryId),
     parentIdx: index("expenses_parent_id_idx").on(table.parentId),
+    // One installment per debt per month.
+    debtPeriodIdx: uniqueIndex("expenses_debt_id_period_idx")
+      .on(table.debtId, table.period)
+      .where(sql`${table.debtId} is not null`),
   }),
 );
