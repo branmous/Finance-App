@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/monthly-income", label: "Monthly income", icon: "trendingUp" },
   { href: "/monthly-expenses", label: "Monthly expenses", icon: "receipt" },
   { href: "/debts", label: "Debts", icon: "landmark" },
+  { href: "/travels", label: "Travels", icon: "plane" },
   { href: "/categories", label: "Categories", icon: "tags" },
 ] as const;
 

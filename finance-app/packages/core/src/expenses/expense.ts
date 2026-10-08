@@ -34,7 +34,7 @@ export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
 }
 
-function isValidDate(value: unknown): value is string {
+export function isValidDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const match = DATE_PATTERN.exec(value);
   if (!match) return false;

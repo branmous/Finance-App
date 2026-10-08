@@ -49,3 +49,5 @@ export { INCOME_NOTE_MAX_LENGTH, INCOME_TYPES, validateIncomeInput } from "./inc
 export type { IncomeInput, IncomeInputErrors, IncomeType, IncomeValidationResult } from "./incomes/income";
 export { TIGHT_THRESHOLD_PERCENT, computeBalance } from "./budget/balance";
 export type { Balance, BalanceStatus } from "./budget/balance";
+
+export * from "./travels/index";
