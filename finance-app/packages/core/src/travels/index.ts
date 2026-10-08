@@ -33,7 +33,9 @@ export type {
   TripSettlementValidationResult,
   TripValidationResult,
 } from "./trip";
-export { computeSettlementPlan, computeTripSummary, splitAmount } from "./split";
+export { computeTripSchedule, todayIso } from "./schedule";
+export type { TripPhase, TripSchedule } from "./schedule";
+export { computeSettlementPlan, computeTripSummary, isTripSettled, splitAmount } from "./split";
 export type {
   PersonBalance,
   SettlementTransfer,

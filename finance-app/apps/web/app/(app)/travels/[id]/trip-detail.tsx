@@ -4,7 +4,9 @@ import { formatCop } from "@finance-app/core/expenses";
 import {
   TRIP_EXPENSE_CATEGORIES,
   computeSettlementPlan,
+  computeTripSchedule,
   computeTripSummary,
+  isTripSettled,
   splitAmount,
 } from "@finance-app/core/travels";
 import Link from "next/link";
@@ -16,6 +18,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { TRIP_CATEGORY_LABELS, TRIP_KIND_LABELS } from "@/lib/travel-labels";
 import { formatTripDates, formatTripDay } from "@/lib/trip-dates";
+import { useToday } from "@/lib/use-today";
 
 import {
   addTripPerson,
@@ -28,6 +31,7 @@ import {
   setTripExpenseShares,
 } from "../actions";
 import { TripFormDialog } from "../trip-form-dialog";
+import { SettledStamp, TripPhaseBadge, TripPhaseDetail, TripProgress } from "../trip-status";
 import { ExpenseFormDialog } from "./expense-form-dialog";
 import type { TripData, TripExpenseItem, TripPerson, TripSettlementItem } from "./types";
 
@@ -64,6 +68,10 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
     () => computeTripSummary(people, expenses, settlements),
     [people, expenses, settlements],
   );
+
+  const settled = isTripSettled(summary, expenses.length);
+  const today = useToday();
+  const schedule = today ? computeTripSchedule(trip.startDate, trip.endDate, today) : null;
 
   // What is still to be paid to leave everyone at zero; recorded payments are already in the balances.
   const transfers = useMemo(() => computeSettlementPlan(summary.people), [summary.people]);
@@ -152,6 +160,18 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
             {dates ? ` · ${dates}` : ""}
             {isGroup ? ` · ${people.length} people` : ""}
           </p>
+          {(schedule && schedule.phase !== "undated") || settled ? (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+              {schedule ? <TripPhaseBadge schedule={schedule} /> : null}
+              {schedule ? <TripPhaseDetail schedule={schedule} className="text-sm font-medium" /> : null}
+              {settled ? <SettledStamp size="lg" /> : null}
+            </div>
+          ) : null}
+          {schedule ? (
+            <div className="mt-3 max-w-sm">
+              <TripProgress schedule={schedule} />
+            </div>
+          ) : null}
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setEditingTrip(true)} aria-label="Edit trip">
@@ -214,6 +234,13 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
           <ul className="mt-4 divide-y divide-paper-line border-y border-paper-line">
             {summary.people.map((person, index) => (
               <li key={person.id} className="flex items-center gap-3 py-3" data-testid={`balance-${person.name}`}>
+                <span
+                  aria-label={`Person ${index + 1}`}
+                  className="w-7 shrink-0 text-right text-sm font-semibold tabular-nums text-paper-muted"
+                  data-testid="person-number"
+                >
+                  {index + 1}.
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{person.name}</p>
                   <p className="text-sm text-paper-muted">
@@ -395,11 +422,19 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
           {settleOpen ? (
             <div className="mt-4" data-testid="settle-panel">
               {transfers.length === 0 ? (
-                <p className="rounded-panel bg-leaf-tint px-4 py-3 text-sm font-medium text-leaf">
-                  {summary.paidMinor > 0 || settlements.length > 0
-                    ? "Everyone is settled up."
-                    : "Nothing to settle yet. Mark some expenses as paid first."}
-                </p>
+                <div
+                  className={`flex items-center gap-3 rounded-panel px-4 py-3 text-sm font-medium ${
+                    settled ? "animate-stamp border border-leaf bg-leaf-tint text-leaf" : "bg-leaf-tint text-leaf"
+                  }`}
+                >
+                  {settled ? <Icon name="checkCircle" width={22} height={22} /> : null}
+                  <p>
+                    {summary.paidMinor > 0 || settlements.length > 0
+                      ? "Everyone is settled up."
+                      : "Nothing to settle yet. Mark some expenses as paid first."}
+                    {settled ? " Every expense is paid and nobody owes anyone." : ""}
+                  </p>
+                </div>
               ) : (
                 <ul className="divide-y divide-paper-line border-y border-paper-line">
                   {transfers.map((transfer) => (

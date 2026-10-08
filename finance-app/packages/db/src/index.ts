@@ -38,6 +38,7 @@ export {
   createTripRepository,
 } from "./trip-repository";
 export type {
+  TripAccounts,
   TripDetail,
   TripExpenseRow,
   TripListItem,

@@ -36,7 +36,19 @@ async function signIn(page: Page, identifier: string) {
   await expect(page).toHaveURL("/");
 }
 
-async function createTrip(page: Page, fields: { name: string; kind: "Individual" | "Group"; people?: string }) {
+/** A local calendar day relative to today, as YYYY-MM-DD (what a date input takes). */
+function dayFromToday(offset: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+async function createTrip(
+  page: Page,
+  fields: { name: string; kind: "Individual" | "Group"; people?: string; start?: string; end?: string },
+) {
   await page.goto("/travels");
   await expect(page.getByRole("heading", { name: "Travels", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "New trip" }).click();
@@ -44,6 +56,8 @@ async function createTrip(page: Page, fields: { name: string; kind: "Individual"
   await dialog.getByLabel("Trip name").fill(fields.name);
   await dialog.getByLabel("Type").selectOption({ label: fields.kind });
   if (fields.people) await dialog.getByLabel("People going").fill(fields.people);
+  if (fields.start) await dialog.getByLabel("Start date (optional)").fill(fields.start);
+  if (fields.end) await dialog.getByLabel("End date (optional)").fill(fields.end);
   await dialog.getByRole("button", { name: "Create trip" }).click();
   await expect(page.getByRole("heading", { name: fields.name, level: 1 })).toBeVisible();
 }
@@ -223,4 +237,98 @@ test("is reachable from the menu", async ({ page }) => {
   await signIn(page, OWNER.email);
   await page.getByRole("link", { name: "Travels" }).first().click();
   await expect(page).toHaveURL(/\/travels/);
+});
+
+test("trips show whether they are upcoming, in progress or finished, and can be filtered", async ({ page }) => {
+  const upcoming = `Soon ${runId}`;
+  const ongoing = `Now ${runId}`;
+  const finished = `Past ${runId}`;
+  await signIn(page, OWNER.email);
+  await createTrip(page, { name: upcoming, kind: "Individual", start: dayFromToday(10), end: dayFromToday(12) });
+  await createTrip(page, { name: ongoing, kind: "Individual", start: dayFromToday(-1), end: dayFromToday(1) });
+  await createTrip(page, { name: finished, kind: "Individual", start: dayFromToday(-10), end: dayFromToday(-8) });
+
+  // The detail of each trip says where it stands.
+  await expect(page.getByTestId("trip-phase")).toHaveText("Finished");
+  await expect(page.getByTestId("trip-phase-detail")).toHaveText("Ended 8 days ago");
+
+  await page.goto("/travels");
+  const card = (name: string) => page.getByRole("link", { name: new RegExp(name) });
+  await expect(card(upcoming).getByTestId("trip-phase")).toHaveText("Upcoming");
+  await expect(card(upcoming).getByTestId("trip-phase-detail")).toHaveText("Starts in 10 days");
+  await expect(card(ongoing).getByTestId("trip-phase")).toHaveText("In progress");
+  await expect(card(ongoing).getByTestId("trip-phase-detail")).toHaveText("Day 2 of 3 · 1 day left");
+  await expect(card(ongoing).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
+  await expect(card(finished).getByTestId("trip-phase")).toHaveText("Finished");
+
+  // What is happening now comes before what is coming and before what is over.
+  const names = await page.getByRole("heading", { level: 2 }).allTextContents();
+  expect(names.indexOf(ongoing)).toBeLessThan(names.indexOf(upcoming));
+  expect(names.indexOf(upcoming)).toBeLessThan(names.indexOf(finished));
+
+  // The filter chips narrow the list.
+  await page.getByRole("button", { name: /^Finished/ }).click();
+  await expect(card(finished)).toBeVisible();
+  await expect(card(upcoming)).toHaveCount(0);
+  await expect(card(ongoing)).toHaveCount(0);
+  await page.getByRole("button", { name: /^In progress/ }).click();
+  await expect(card(ongoing)).toBeVisible();
+  await expect(card(finished)).toHaveCount(0);
+  await page.getByRole("button", { name: /^All/ }).click();
+  await expect(card(upcoming)).toBeVisible();
+
+  for (const name of [upcoming, ongoing, finished]) {
+    await card(name).click();
+    await deleteTrip(page);
+  }
+});
+
+test("a trip with no dates shows no status", async ({ page }) => {
+  const name = `Undated ${runId}`;
+  await signIn(page, OWNER.email);
+  await createTrip(page, { name, kind: "Individual" });
+  await expect(page.getByTestId("trip-phase")).toHaveCount(0);
+  await deleteTrip(page);
+});
+
+test("group trip: people are numbered and a fully paid trip gets the settled stamp", async ({ page }) => {
+  const name = `Bogota ${runId}`;
+  await signIn(page, OWNER.email);
+  await createTrip(page, { name, kind: "Group", people: "Me, Ana, Leo" });
+  await expect(page.getByTestId("person-number")).toHaveText(["1.", "2.", "3."]);
+  await expect(page.getByTestId("balance-Ana").getByTestId("person-number")).toHaveText("2.");
+
+  // Nothing is settled before there is anything paid.
+  await expect(page.getByTestId("trip-settled")).toHaveCount(0);
+
+  await addExpense(page, { description: "Cabin", category: "Lodging", amount: "900000", status: "Paid", paidBy: "Me" });
+  await expect(page.getByTestId("trip-settled")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Settle up", exact: true }).click();
+  const panel = page.getByTestId("settle-panel");
+  await panel.getByRole("button", { name: "Mark as paid: Ana pays Me" }).click();
+  await expect(page.getByTestId("trip-settled")).toHaveCount(0);
+  await panel.getByRole("button", { name: "Mark as paid: Leo pays Me" }).click();
+  await expect(page.getByTestId("trip-settled")).toBeVisible();
+  await expect(panel).toContainText("Every expense is paid and nobody owes anyone");
+
+  // The stamp is also on the card in the list, and goes away if a new expense is still unpaid.
+  await page.goto("/travels");
+  await expect(page.getByRole("link", { name: new RegExp(name) }).getByTestId("trip-settled")).toBeVisible();
+  await page.getByRole("link", { name: new RegExp(name) }).click();
+  await addExpense(page, { description: "Dinner", category: "Food", amount: "60000", status: "Pending" });
+  await expect(page.getByTestId("trip-settled")).toHaveCount(0);
+
+  await deleteTrip(page);
+});
+
+test("individual trip: the settled stamp appears when every expense is paid", async ({ page }) => {
+  const name = `Cusco ${runId}`;
+  await signIn(page, OWNER.email);
+  await createTrip(page, { name, kind: "Individual" });
+  await addExpense(page, { description: "Flights", category: "Flights", amount: "1500000", status: "Pending" });
+  await expect(page.getByTestId("trip-settled")).toHaveCount(0);
+  await page.getByRole("button", { name: "Mark paid: Flights" }).click();
+  await expect(page.getByTestId("trip-settled")).toBeVisible();
+  await deleteTrip(page);
 });

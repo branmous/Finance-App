@@ -1,4 +1,11 @@
-import type { TripExpenseInput, TripInput, TripSettlementInput } from "@finance-app/core";
+import {
+  computeTripSummary,
+  isTripSettled,
+  type SummaryExpense,
+  type TripExpenseInput,
+  type TripInput,
+  type TripSettlementInput,
+} from "@finance-app/core";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
@@ -15,14 +22,20 @@ export type TripParticipantRow = typeof tripParticipants.$inferSelect;
 export type TripExpenseRow = typeof tripExpenses.$inferSelect & { shareIds: string[] };
 export type TripSettlementRow = typeof tripSettlements.$inferSelect;
 
-export type TripListItem = TripRow & { participantCount: number; totalMinor: number };
-
-export type TripDetail = {
-  trip: TripRow;
+export type TripAccounts = {
   participants: TripParticipantRow[];
   expenses: TripExpenseRow[];
   settlements: TripSettlementRow[];
 };
+
+export type TripListItem = TripRow & {
+  participantCount: number;
+  totalMinor: number;
+  /** Has expenses, none pending and nobody owes anyone. */
+  settled: boolean;
+};
+
+export type TripDetail = TripAccounts & { trip: TripRow };
 
 /** A person id that does not belong to this trip (or does not exist). */
 export class TripParticipantNotFoundError extends Error {
@@ -92,82 +105,93 @@ export function createTripRepository(db: DbClient) {
     return row ?? null;
   }
 
+  /** People, expenses (with who splits each) and payments of the given trips, grouped by trip. */
+  async function loadAccounts(userId: string, tripIds: readonly string[]): Promise<Map<string, TripAccounts>> {
+    const accounts = new Map<string, TripAccounts>(
+      tripIds.map((id) => [id, { participants: [], expenses: [], settlements: [] }]),
+    );
+    if (tripIds.length === 0) return accounts;
+    const ids = [...tripIds];
+
+    const participants = await db
+      .select()
+      .from(tripParticipants)
+      .where(and(eq(tripParticipants.userId, userId), inArray(tripParticipants.tripId, ids)))
+      .orderBy(asc(tripParticipants.position), asc(tripParticipants.createdAt));
+    const expenseRows = await db
+      .select()
+      .from(tripExpenses)
+      .where(and(eq(tripExpenses.userId, userId), inArray(tripExpenses.tripId, ids)))
+      .orderBy(asc(tripExpenses.createdAt));
+    const settlements = await db
+      .select()
+      .from(tripSettlements)
+      .where(and(eq(tripSettlements.userId, userId), inArray(tripSettlements.tripId, ids)))
+      .orderBy(asc(tripSettlements.createdAt));
+    const shareRows =
+      expenseRows.length === 0
+        ? []
+        : await db
+            .select()
+            .from(tripExpenseShares)
+            .where(
+              and(
+                eq(tripExpenseShares.userId, userId),
+                inArray(
+                  tripExpenseShares.expenseId,
+                  expenseRows.map((row) => row.id),
+                ),
+              ),
+            );
+
+    const sharesByExpense = new Map<string, string[]>();
+    for (const share of shareRows) {
+      const list = sharesByExpense.get(share.expenseId) ?? [];
+      list.push(share.participantId);
+      sharesByExpense.set(share.expenseId, list);
+    }
+
+    // Keep the order of the people so a split's leftover pesos always land on the same ones.
+    const order = new Map(participants.map((person, index) => [person.id, index]));
+    for (const person of participants) accounts.get(person.tripId)?.participants.push(person);
+    for (const row of expenseRows) {
+      const shareIds = (sharesByExpense.get(row.id) ?? []).sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+      accounts.get(row.tripId)?.expenses.push({ ...row, shareIds });
+    }
+    for (const settlement of settlements) accounts.get(settlement.tripId)?.settlements.push(settlement);
+    return accounts;
+  }
+
   return {
     async list(userId: string): Promise<TripListItem[]> {
-      const rows = await db.select().from(trips).where(eq(trips.userId, userId)).orderBy(desc(trips.startDate), desc(trips.createdAt));
-      if (rows.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(trips)
+        .where(eq(trips.userId, userId))
+        .orderBy(desc(trips.startDate), desc(trips.createdAt));
+      const accounts = await loadAccounts(
+        userId,
+        rows.map((row) => row.id),
+      );
 
-      const tripIds = rows.map((row) => row.id);
-      const counts = await db
-        .select({ tripId: tripParticipants.tripId, count: sql<string>`count(*)` })
-        .from(tripParticipants)
-        .where(and(eq(tripParticipants.userId, userId), inArray(tripParticipants.tripId, tripIds)))
-        .groupBy(tripParticipants.tripId);
-      const totals = await db
-        .select({ tripId: tripExpenses.tripId, total: sql<string>`coalesce(sum(${tripExpenses.amountMinor}), 0)` })
-        .from(tripExpenses)
-        .where(and(eq(tripExpenses.userId, userId), inArray(tripExpenses.tripId, tripIds)))
-        .groupBy(tripExpenses.tripId);
-
-      const countById = new Map(counts.map((row) => [row.tripId, Number(row.count)]));
-      const totalById = new Map(totals.map((row) => [row.tripId, Number(row.total)]));
-      return rows.map((row) => ({
-        ...row,
-        participantCount: countById.get(row.id) ?? 0,
-        totalMinor: totalById.get(row.id) ?? 0,
-      }));
+      return rows.map((row) => {
+        const { participants, expenses, settlements } = accounts.get(row.id)!;
+        // category and status are plain varchar columns; they were validated against the closed lists on write.
+        const summary = computeTripSummary(participants, expenses as SummaryExpense[], settlements);
+        return {
+          ...row,
+          participantCount: participants.length,
+          totalMinor: summary.totalMinor,
+          settled: isTripSettled(summary, expenses.length),
+        };
+      });
     },
 
     async get(userId: string, tripId: string): Promise<TripDetail | null> {
       const trip = await findTrip(userId, tripId);
       if (!trip) return null;
-
-      const participants = await db
-        .select()
-        .from(tripParticipants)
-        .where(and(eq(tripParticipants.tripId, tripId), eq(tripParticipants.userId, userId)))
-        .orderBy(asc(tripParticipants.position), asc(tripParticipants.createdAt));
-      const expenseRows = await db
-        .select()
-        .from(tripExpenses)
-        .where(and(eq(tripExpenses.tripId, tripId), eq(tripExpenses.userId, userId)))
-        .orderBy(asc(tripExpenses.createdAt));
-      const settlements = await db
-        .select()
-        .from(tripSettlements)
-        .where(and(eq(tripSettlements.tripId, tripId), eq(tripSettlements.userId, userId)))
-        .orderBy(asc(tripSettlements.createdAt));
-
-      const shareRows =
-        expenseRows.length === 0
-          ? []
-          : await db
-              .select()
-              .from(tripExpenseShares)
-              .where(
-                and(
-                  eq(tripExpenseShares.userId, userId),
-                  inArray(
-                    tripExpenseShares.expenseId,
-                    expenseRows.map((row) => row.id),
-                  ),
-                ),
-              );
-      const sharesByExpense = new Map<string, string[]>();
-      for (const share of shareRows) {
-        const list = sharesByExpense.get(share.expenseId) ?? [];
-        list.push(share.participantId);
-        sharesByExpense.set(share.expenseId, list);
-      }
-
-      // Keep the order of the people so a split's leftover pesos always land on the same ones.
-      const order = new Map(participants.map((person, index) => [person.id, index]));
-      const expenses = expenseRows.map((row) => ({
-        ...row,
-        shareIds: (sharesByExpense.get(row.id) ?? []).sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0)),
-      }));
-
-      return { trip, participants, expenses, settlements };
+      const accounts = (await loadAccounts(userId, [tripId])).get(tripId)!;
+      return { trip, ...accounts };
     },
 
     async create(userId: string, input: TripInput): Promise<TripRow> {

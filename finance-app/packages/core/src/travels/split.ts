@@ -48,7 +48,15 @@ export type TripSummary = {
   people: PersonBalance[];
 };
 
-export type SettlementTransfer = { fromId: string; toId: string; amountMinor: number };
+/**
+ * A trip is settled when it has expenses, none is still pending and nobody owes anyone.
+ * For an individual trip that simply means every expense is paid.
+ */
+export function isTripSettled(summary: TripSummary, expenseCount: number): boolean {
+  return expenseCount > 0 && summary.pendingMinor === 0 && summary.people.every((person) => person.balanceMinor === 0);
+}
+
+export type SettlementTransfer ={ fromId: string; toId: string; amountMinor: number };
 
 /**
  * Turns balances into the fewest transfers that leave everyone at zero (at most people − 1):

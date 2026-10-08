@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { computeSettlementPlan, computeTripSummary, splitAmount, type SummaryExpense } from "../../src/travels/split";
+import {
+  computeSettlementPlan,
+  computeTripSummary,
+  isTripSettled,
+  splitAmount,
+  type SummaryExpense,
+} from "../../src/travels/split";
 
 const ids = Array.from({ length: 13 }, (_, i) => `p${i}`);
 
@@ -180,5 +186,42 @@ describe("computeSettlementPlan", () => {
       { fromId: "b", toId: "a", amountMinor: 100 },
       { fromId: "c", toId: "a", amountMinor: 100 },
     ]);
+  });
+});
+
+describe("isTripSettled", () => {
+  const trio = [
+    { id: "a", name: "A" },
+    { id: "b", name: "B" },
+  ];
+  const paid = (paidById: string, shareIds: string[]): SummaryExpense => ({
+    amountMinor: 100,
+    category: "food",
+    status: "paid",
+    paidById,
+    shareIds,
+  });
+
+  it("is false for a trip with no expenses", () => {
+    expect(isTripSettled(computeTripSummary(trio, [], []), 0)).toBe(false);
+  });
+
+  it("is false while someone still owes, true once the payment is recorded", () => {
+    const expenses = [paid("a", ["a", "b"])];
+    expect(isTripSettled(computeTripSummary(trio, expenses, []), 1)).toBe(false);
+    expect(isTripSettled(computeTripSummary(trio, expenses, [{ fromId: "b", toId: "a", amountMinor: 50 }]), 1)).toBe(true);
+  });
+
+  it("is false while an expense is pending, even if the balances are even", () => {
+    const expenses: SummaryExpense[] = [
+      paid("a", ["a"]),
+      { amountMinor: 80, category: "food", status: "pending", paidById: null, shareIds: ["a"] },
+    ];
+    expect(isTripSettled(computeTripSummary(trio, expenses, []), 2)).toBe(false);
+  });
+
+  it("is true for an individual trip with every expense paid", () => {
+    const solo = [{ id: "a", name: "Me" }];
+    expect(isTripSettled(computeTripSummary(solo, [paid("a", ["a"])], []), 1)).toBe(true);
   });
 });

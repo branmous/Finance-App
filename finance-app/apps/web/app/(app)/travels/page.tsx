@@ -22,6 +22,7 @@ export default async function TravelsPage() {
     endDate: row.endDate,
     participantCount: row.participantCount,
     totalMinor: row.totalMinor,
+    settled: row.settled,
   }));
 
   return <TravelsView trips={trips} />;

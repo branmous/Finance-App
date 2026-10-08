@@ -53,7 +53,41 @@ describe("trip repository", () => {
     await repo.createExpense(alice.id, group.id, expense(me.id, [me.id, ana.id, leo.id]));
     await repo.createExpense(alice.id, group.id, expense(null, [me.id]));
     const [item] = await repo.list(alice.id);
-    expect(item).toMatchObject({ name: "Santander", participantCount: 3, totalMinor: 1_800_000 });
+    expect(item).toMatchObject({ name: "Santander", participantCount: 3, totalMinor: 1_800_000, settled: false });
+  });
+
+  it("flags a trip as settled once everything is paid and nobody owes", async () => {
+    const { repo, alice, group, me, ana, leo, expense } = await setup();
+    await repo.createExpense(alice.id, group.id, expense(me.id, [me.id, ana.id, leo.id]));
+    expect((await repo.list(alice.id))[0]?.settled).toBe(false);
+
+    // Ana and Leo each owe Me 300.000; the trip is settled when both have paid.
+    await repo.createSettlement(alice.id, group.id, { fromId: ana.id, toId: me.id, amountMinor: 300_000, paidOn: null });
+    expect((await repo.list(alice.id))[0]?.settled).toBe(false);
+    await repo.createSettlement(alice.id, group.id, { fromId: leo.id, toId: me.id, amountMinor: 300_000, paidOn: null });
+    expect((await repo.list(alice.id))[0]?.settled).toBe(true);
+
+    // A pending expense reopens it.
+    await repo.createExpense(alice.id, group.id, expense(null, [me.id]));
+    expect((await repo.list(alice.id))[0]?.settled).toBe(false);
+  });
+
+  it("does not mix the accounts of two trips in the list", async () => {
+    const { repo, alice, group, me, expense } = await setup();
+    const solo = await repo.create(alice.id, {
+      name: "Solo",
+      kind: "individual",
+      startDate: null,
+      endDate: null,
+      participants: ["Me"],
+    });
+    const soloMe = (await repo.get(alice.id, solo.id))!.participants[0]!;
+    await repo.createExpense(alice.id, solo.id, expense(soloMe.id, [soloMe.id]));
+    await repo.createExpense(alice.id, group.id, expense(null, [me.id]));
+
+    const byName = Object.fromEntries((await repo.list(alice.id)).map((item) => [item.name, item]));
+    expect(byName["Solo"]).toMatchObject({ participantCount: 1, totalMinor: 900_000, settled: true });
+    expect(byName["Santander"]).toMatchObject({ participantCount: 3, totalMinor: 900_000, settled: false });
   });
 
   it("stores an expense with its shares and lets a person be left out", async () => {
