@@ -1,7 +1,12 @@
 "use client";
 
 import { formatCop } from "@finance-app/core/expenses";
-import { TRIP_EXPENSE_CATEGORIES, computeTripSummary, splitAmount } from "@finance-app/core/travels";
+import {
+  TRIP_EXPENSE_CATEGORIES,
+  computeSettlementPlan,
+  computeTripSummary,
+  splitAmount,
+} from "@finance-app/core/travels";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
@@ -14,6 +19,7 @@ import { formatTripDates, formatTripDay } from "@/lib/trip-dates";
 
 import {
   addTripPerson,
+  createTripSettlement,
   deleteTrip,
   deleteTripExpense,
   deleteTripSettlement,
@@ -23,7 +29,6 @@ import {
 } from "../actions";
 import { TripFormDialog } from "../trip-form-dialog";
 import { ExpenseFormDialog } from "./expense-form-dialog";
-import { SettlementFormDialog } from "./settlement-form-dialog";
 import type { TripData, TripExpenseItem, TripPerson, TripSettlementItem } from "./types";
 
 type Props = {
@@ -50,7 +55,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
   const [deletingExpense, setDeletingExpense] = useState<TripExpenseItem | null>(null);
   const [editingTrip, setEditingTrip] = useState(false);
   const [deletingTrip, setDeletingTrip] = useState(false);
-  const [recordingPayment, setRecordingPayment] = useState(false);
+  const [settleOpen, setSettleOpen] = useState(false);
   const [newPerson, setNewPerson] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -59,6 +64,10 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
     () => computeTripSummary(people, expenses, settlements),
     [people, expenses, settlements],
   );
+
+  // What is still to be paid to leave everyone at zero; recorded payments are already in the balances.
+  const transfers = useMemo(() => computeSettlementPlan(summary.people), [summary.people]);
+  const pendingCount = expenses.filter((expense) => expense.status === "pending").length;
 
   function run(action: () => Promise<{ ok: boolean; message?: string }>, onFail?: () => void) {
     setNotice(null);
@@ -370,40 +379,88 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
       </section>
 
       {isGroup ? (
-        <section aria-labelledby="payments" className="mt-10">
+        <section aria-labelledby="settle" className="mt-10">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="payments" className="text-xl font-semibold">
-              Payments between people
+            <h2 id="settle" className="text-xl font-semibold">
+              Settle up
             </h2>
-            <Button variant="secondary" onClick={() => setRecordingPayment(true)}>
-              Record payment
+            <Button variant={settleOpen ? "secondary" : "primary"} onClick={() => setSettleOpen((open) => !open)} aria-expanded={settleOpen}>
+              {settleOpen ? "Hide" : "Settle up"}
             </Button>
           </div>
-          {settlements.length === 0 ? (
-            <p className="mt-3 text-sm text-paper-muted">
-              When someone pays back what they owe, record it here and the balances update.
-            </p>
-          ) : (
-            <ul className="mt-4 divide-y divide-paper-line border-y border-paper-line">
-              {settlements.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 py-3">
-                  <p className="min-w-0 flex-1 truncate">
-                    <strong>{nameOf(item.fromId)}</strong> paid <strong>{nameOf(item.toId)}</strong>
-                    {item.paidOn ? <span className="text-paper-muted"> · {formatTripDay(item.paidOn)}</span> : null}
-                  </p>
-                  <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
-                  <Button
-                    variant="ghost"
-                    className="px-2.5 hover:text-clay"
-                    onClick={() => run(() => deleteTripSettlement(trip.id, item.id))}
-                    aria-label={`Delete payment from ${nameOf(item.fromId)} to ${nameOf(item.toId)}`}
-                  >
-                    <Icon name="trash" width={18} height={18} />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <p className="mt-1 text-sm text-paper-muted">
+            Works out who pays whom, with the fewest transfers, so everyone ends up even.
+          </p>
+
+          {settleOpen ? (
+            <div className="mt-4" data-testid="settle-panel">
+              {transfers.length === 0 ? (
+                <p className="rounded-panel bg-leaf-tint px-4 py-3 text-sm font-medium text-leaf">
+                  {summary.paidMinor > 0 || settlements.length > 0
+                    ? "Everyone is settled up."
+                    : "Nothing to settle yet. Mark some expenses as paid first."}
+                </p>
+              ) : (
+                <ul className="divide-y divide-paper-line border-y border-paper-line">
+                  {transfers.map((transfer) => (
+                    <li key={`${transfer.fromId}-${transfer.toId}`} className="flex items-center gap-3 py-3" data-testid="transfer-row">
+                      <p className="min-w-0 flex-1">
+                        <strong>{nameOf(transfer.fromId)}</strong> pays <strong>{nameOf(transfer.toId)}</strong>
+                      </p>
+                      <span className="font-semibold tabular-nums">{formatCop(transfer.amountMinor)}</span>
+                      <Button
+                        variant="secondary"
+                        disabled={pending}
+                        onClick={() =>
+                          run(() =>
+                            createTripSettlement(trip.id, {
+                              fromId: transfer.fromId,
+                              toId: transfer.toId,
+                              amountMinor: transfer.amountMinor,
+                              paidOn: null,
+                            }),
+                          )
+                        }
+                        aria-label={`Mark as paid: ${nameOf(transfer.fromId)} pays ${nameOf(transfer.toId)}`}
+                      >
+                        Mark as paid
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {pendingCount > 0 ? (
+                <p className="mt-3 text-sm text-paper-muted">
+                  {pendingCount} {pendingCount === 1 ? "expense is" : "expenses are"} still pending and not included.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {settlements.length > 0 ? (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-paper-muted">Payments made</h3>
+              <ul className="mt-2 divide-y divide-paper-line border-y border-paper-line">
+                {settlements.map((item) => (
+                  <li key={item.id} className="flex items-center gap-3 py-3">
+                    <p className="min-w-0 flex-1 truncate">
+                      <strong>{nameOf(item.fromId)}</strong> paid <strong>{nameOf(item.toId)}</strong>
+                      {item.paidOn ? <span className="text-paper-muted"> · {formatTripDay(item.paidOn)}</span> : null}
+                    </p>
+                    <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
+                    <Button
+                      variant="ghost"
+                      className="px-2.5 hover:text-clay"
+                      onClick={() => run(() => deleteTripSettlement(trip.id, item.id))}
+                      aria-label={`Undo payment from ${nameOf(item.fromId)} to ${nameOf(item.toId)}`}
+                    >
+                      <Icon name="trash" width={18} height={18} />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -414,13 +471,6 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
         people={people}
         isGroup={isGroup}
         onClose={() => setEditingExpense(undefined)}
-      />
-
-      <SettlementFormDialog
-        open={recordingPayment}
-        tripId={trip.id}
-        people={people}
-        onClose={() => setRecordingPayment(false)}
       />
 
       <TripFormDialog

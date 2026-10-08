@@ -48,6 +48,38 @@ export type TripSummary = {
   people: PersonBalance[];
 };
 
+export type SettlementTransfer = { fromId: string; toId: string; amountMinor: number };
+
+/**
+ * Turns balances into the fewest transfers that leave everyone at zero (at most people − 1):
+ * the person who owes the most pays the one who is owed the most, until nothing is left.
+ * Ties keep the order of the people, so the same trip always gives the same list.
+ */
+export function computeSettlementPlan(
+  balances: readonly { id: string; balanceMinor: number }[],
+): SettlementTransfer[] {
+  const debtors = balances.filter((person) => person.balanceMinor < 0).map((p) => ({ id: p.id, left: -p.balanceMinor }));
+  const creditors = balances.filter((person) => person.balanceMinor > 0).map((p) => ({ id: p.id, left: p.balanceMinor }));
+  const transfers: SettlementTransfer[] = [];
+
+  while (debtors.length > 0 && creditors.length > 0) {
+    // Array.prototype.sort is stable, so equal amounts keep the order of the people.
+    debtors.sort((a, b) => b.left - a.left);
+    creditors.sort((a, b) => b.left - a.left);
+    const debtor = debtors[0]!;
+    const creditor = creditors[0]!;
+    const amountMinor = Math.min(debtor.left, creditor.left);
+
+    transfers.push({ fromId: debtor.id, toId: creditor.id, amountMinor });
+    debtor.left -= amountMinor;
+    creditor.left -= amountMinor;
+    if (debtor.left === 0) debtors.shift();
+    if (creditor.left === 0) creditors.shift();
+  }
+
+  return transfers;
+}
+
 export function computeTripSummary(
   people: readonly SummaryPerson[],
   expenses: readonly SummaryExpense[],

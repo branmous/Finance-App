@@ -33,5 +33,12 @@ export type {
   TripSettlementValidationResult,
   TripValidationResult,
 } from "./trip";
-export { computeTripSummary, splitAmount } from "./split";
-export type { PersonBalance, SummaryExpense, SummaryPerson, SummarySettlement, TripSummary } from "./split";
+export { computeSettlementPlan, computeTripSummary, splitAmount } from "./split";
+export type {
+  PersonBalance,
+  SettlementTransfer,
+  SummaryExpense,
+  SummaryPerson,
+  SummarySettlement,
+  TripSummary,
+} from "./split";

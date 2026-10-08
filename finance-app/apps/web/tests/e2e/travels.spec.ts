@@ -119,23 +119,37 @@ test("group trip: splits an expense, recalculates when someone is left out and w
   await deleteTrip(page);
 });
 
-test("group trip: a payment between people settles the balances", async ({ page }) => {
+test("group trip: Settle up says who pays whom and marking it paid clears the balances", async ({ page }) => {
   const name = `Cartagena ${runId}`;
   await signIn(page, OWNER.email);
-  await createTrip(page, { name, kind: "Group", people: "Me, Ana" });
-  await addExpense(page, { description: "Boat", category: "Activities", amount: "400000", status: "Paid", paidBy: "Me" });
-  await expect(page.getByTestId("balance-Ana")).toContainText("200.000");
+  await createTrip(page, { name, kind: "Group", people: "Brandon, Maria, Fanny" });
+  await addExpense(page, { description: "Hotel", category: "Lodging", amount: "600000", status: "Paid", paidBy: "Brandon" });
+  await addExpense(page, { description: "Flight", category: "Flights", amount: "300000", status: "Paid", paidBy: "Maria" });
+  await addExpense(page, { description: "Tour", category: "Activities", amount: "90000", status: "Pending" });
 
-  await page.getByRole("button", { name: "Record payment" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Paid by").selectOption({ label: "Ana" });
-  await dialog.getByLabel("Received by").selectOption({ label: "Me" });
-  await dialog.getByLabel("Amount (COP)").fill("200000");
-  await dialog.getByRole("button", { name: "Record payment" }).click();
-  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Settle up", exact: true }).click();
+  const panel = page.getByTestId("settle-panel");
+  // Everyone's part is 300.000: Brandon is owed 300.000, Maria is even and Fanny owes 300.000.
+  await expect(panel.getByTestId("transfer-row")).toHaveCount(1);
+  await expect(panel.getByTestId("transfer-row")).toContainText("Fanny pays Brandon");
+  await expect(panel.getByTestId("transfer-row")).toContainText("300.000");
+  await expect(panel).toContainText("1 expense is still pending and not included");
 
-  await expect(page.getByTestId("balance-Ana")).toContainText("settled up");
-  await expect(page.getByTestId("balance-Me")).toContainText("settled up");
+  // A new paid expense recalculates the open list at once.
+  await addExpense(page, { description: "Taxi", category: "Transport", amount: "90000", status: "Paid", paidBy: "Maria" });
+  await expect(panel.getByTestId("transfer-row")).toHaveCount(2);
+
+  await panel.getByRole("button", { name: "Mark as paid: Fanny pays Brandon" }).click();
+  await expect(panel.getByTestId("transfer-row")).toHaveCount(1);
+  await panel.getByRole("button", { name: /^Mark as paid:/ }).click();
+  await expect(panel).toContainText("Everyone is settled up.");
+  for (const person of ["Brandon", "Maria", "Fanny"]) {
+    await expect(page.getByTestId(`balance-${person}`)).toContainText("settled up");
+  }
+
+  // A payment marked by mistake can be undone.
+  await page.getByRole("button", { name: /^Undo payment from Fanny/ }).first().click();
+  await expect(panel.getByTestId("transfer-row")).not.toHaveCount(0);
 
   await deleteTrip(page);
 });

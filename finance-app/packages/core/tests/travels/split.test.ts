@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeTripSummary, splitAmount } from "../../src/travels/split";
+import { computeSettlementPlan, computeTripSummary, splitAmount, type SummaryExpense } from "../../src/travels/split";
 
 const ids = Array.from({ length: 13 }, (_, i) => `p${i}`);
 
@@ -91,5 +91,94 @@ describe("computeTripSummary", () => {
     );
     expect(summary.byCategory).toEqual({ flights: 700_000, food: 50_000 });
     expect(summary.totalMinor).toBe(750_000);
+  });
+});
+
+describe("computeSettlementPlan", () => {
+  const trio = [
+    { id: "brandon", name: "Brandon" },
+    { id: "maria", name: "Maria" },
+    { id: "fanny", name: "Fanny" },
+  ];
+  const everyone = ["brandon", "maria", "fanny"];
+
+  function plan(expenses: SummaryExpense[], settlements: { fromId: string; toId: string; amountMinor: number }[] = []) {
+    const summary = computeTripSummary(trio, expenses, settlements);
+    return { summary, transfers: computeSettlementPlan(summary.people) };
+  }
+
+  it("settles the Brandon / Maria / Fanny example with a single transfer", () => {
+    const { transfers } = plan([
+      { amountMinor: 600, category: "lodging", status: "paid", paidById: "brandon", shareIds: everyone },
+      { amountMinor: 300, category: "flights", status: "paid", paidById: "maria", shareIds: everyone },
+    ]);
+    expect(transfers).toEqual([{ fromId: "fanny", toId: "brandon", amountMinor: 300 }]);
+  });
+
+  it("returns nothing when everyone is at zero", () => {
+    const { transfers } = plan([
+      { amountMinor: 300, category: "food", status: "paid", paidById: "maria", shareIds: ["maria"] },
+    ]);
+    expect(transfers).toEqual([]);
+    expect(computeSettlementPlan([])).toEqual([]);
+  });
+
+  it("splits one debt across several creditors", () => {
+    const { transfers } = plan([
+      { amountMinor: 600, category: "lodging", status: "paid", paidById: "brandon", shareIds: ["brandon", "fanny"] },
+      { amountMinor: 200, category: "food", status: "paid", paidById: "maria", shareIds: ["maria", "fanny"] },
+    ]);
+    // Fanny owes 300 to Brandon and 100 to Maria.
+    expect(transfers).toEqual([
+      { fromId: "fanny", toId: "brandon", amountMinor: 300 },
+      { fromId: "fanny", toId: "maria", amountMinor: 100 },
+    ]);
+  });
+
+  it("shrinks when a payment was already recorded", () => {
+    const { transfers } = plan(
+      [{ amountMinor: 900, category: "lodging", status: "paid", paidById: "brandon", shareIds: everyone }],
+      [{ fromId: "fanny", toId: "brandon", amountMinor: 100 }],
+    );
+    expect(transfers).toEqual([
+      { fromId: "maria", toId: "brandon", amountMinor: 300 },
+      { fromId: "fanny", toId: "brandon", amountMinor: 200 },
+    ]);
+  });
+
+  it("ignores pending expenses", () => {
+    const { transfers } = plan([
+      { amountMinor: 900, category: "lodging", status: "pending", paidById: null, shareIds: everyone },
+    ]);
+    expect(transfers).toEqual([]);
+  });
+
+  it("uses at most people - 1 transfers and leaves everyone at zero (13 people, odd amounts)", () => {
+    const people = ids.map((id) => ({ id, name: id }));
+    const expenses: SummaryExpense[] = [
+      { amountMinor: 1_000_003, category: "lodging", status: "paid", paidById: "p0", shareIds: ids },
+      { amountMinor: 777_777, category: "food", status: "paid", paidById: "p5", shareIds: ids.slice(2) },
+      { amountMinor: 95_001, category: "transport", status: "paid", paidById: "p9", shareIds: ids.slice(0, 7) },
+    ];
+    const summary = computeTripSummary(people, expenses, []);
+    const transfers = computeSettlementPlan(summary.people);
+    expect(transfers.length).toBeLessThanOrEqual(people.length - 1);
+    expect(transfers.every((t) => t.amountMinor > 0 && t.fromId !== t.toId)).toBe(true);
+
+    // Applying the plan as recorded payments settles every balance.
+    const after = computeTripSummary(people, expenses, transfers);
+    expect(after.people.every((p) => p.balanceMinor === 0)).toBe(true);
+  });
+
+  it("is deterministic: equal debts keep the order of the people", () => {
+    const transfers = computeSettlementPlan([
+      { id: "a", balanceMinor: 200 },
+      { id: "b", balanceMinor: -100 },
+      { id: "c", balanceMinor: -100 },
+    ]);
+    expect(transfers).toEqual([
+      { fromId: "b", toId: "a", amountMinor: 100 },
+      { fromId: "c", toId: "a", amountMinor: 100 },
+    ]);
   });
 });

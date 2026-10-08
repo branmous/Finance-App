@@ -9,12 +9,12 @@ Registrar viajes con sus gastos. Un viaje es **individual** (todo el gasto es m�
 - Gasto: descripción (≤80), categoría (`flights`, `lodging`, `transport`, `food`, `activities`, `other`), monto COP entero, fecha opcional, estado `pending` | `paid` y, si está pagado, quién lo pagó (un solo pagador).
 - División en partes iguales entre las personas incluidas en el gasto. Excluir a alguien recalcula las partes. El resto de pesos se reparte de a $1 entre los primeros incluidos, de modo que las partes suman exactamente el monto.
 - Saldo por persona = lo que pagó − lo que le corresponde (solo gastos `paid`) + abonos enviados − abonos recibidos. Positivo = le deben; negativo = debe. Los gastos `pending` se muestran como "por pagar" y no mueven saldos.
-- Abonos: transferencia registrada entre dos personas del viaje con monto y fecha opcional; ajusta los saldos.
+- Liquidación (**Settle up**): el botón calcula el mínimo de transferencias (a lo sumo personas − 1) para dejar todos los saldos en cero: el mayor deudor paga al mayor acreedor hasta saldar. La lista se recalcula en vivo mientras está abierta. Cada transferencia tiene **Mark as paid**, que la registra como un pago entre esas dos personas (con monto y fecha opcional) y ajusta los saldos; un pago marcado por error se puede deshacer desde "Payments made". Los gastos pendientes no entran.
 - Módulo independiente: no afecta gastos mensuales ni el balance ingresos − gastos.
 - Solo COP. Todas las consultas se filtran por `user_id`. UI en inglés, código en inglés.
 
 ## Fuera de alcance
-Presupuesto del viaje, varios pagadores o pagos parciales por gasto, montos manuales por persona, pesos por persona, multimoneda, sugerencia de transferencias mínimas.
+Presupuesto del viaje, varios pagadores o pagos parciales por gasto, montos manuales por persona, pesos por persona, multimoneda.
 
 ## Verificación
 - `pnpm --filter @finance-app/core test` y `pnpm --filter @finance-app/db test`.
