@@ -10,6 +10,7 @@ import { Icon } from "@/components/ui/icon";
 type AppShellProps = { userName: string; userEmail: string; children: ReactNode };
 
 const NAV_ITEMS = [
+  { href: "/monthly-income", label: "Monthly income", icon: "trendingUp" },
   { href: "/monthly-expenses", label: "Monthly expenses", icon: "receipt" },
   { href: "/debts", label: "Debts", icon: "landmark" },
   { href: "/categories", label: "Categories", icon: "tags" },

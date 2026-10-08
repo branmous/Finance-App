@@ -45,3 +45,5 @@ export type {
   DebtStatus,
   DebtValidationResult,
 } from "./debts/debt";
+export { INCOME_NOTE_MAX_LENGTH, INCOME_TYPES, validateIncomeInput } from "./incomes/income";
+export type { IncomeInput, IncomeInputErrors, IncomeType, IncomeValidationResult } from "./incomes/income";

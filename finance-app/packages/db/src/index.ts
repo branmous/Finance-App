@@ -27,3 +27,6 @@ export {
   createDebtRepository,
 } from "./debt-repository";
 export type { DebtRepository, DebtRow, DebtWithProgress } from "./debt-repository";
+export { incomes } from "../schema/incomes";
+export { createIncomeRepository } from "./income-repository";
+export type { IncomeRepository, IncomeRow } from "./income-repository";

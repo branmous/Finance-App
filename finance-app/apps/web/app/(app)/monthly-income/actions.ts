@@ -1,0 +1,55 @@
+"use server";
+
+import { validateIncomeInput, type IncomeInputErrors } from "@finance-app/core";
+import { createIncomeRepository } from "@finance-app/db";
+import { revalidatePath } from "next/cache";
+
+import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/session";
+
+export type IncomeActionResult =
+  | { ok: true }
+  | { ok: false; errors?: IncomeInputErrors; message?: string };
+
+const SESSION_EXPIRED = "Your session has expired. Sign in again.";
+const NOT_FOUND = "This income no longer exists.";
+
+function refresh() {
+  revalidatePath("/monthly-income");
+  revalidatePath("/");
+}
+
+export async function createIncome(input: unknown): Promise<IncomeActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+
+  const parsed = validateIncomeInput(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+
+  await createIncomeRepository(getDb()).create(user.id, parsed.value);
+  refresh();
+  return { ok: true };
+}
+
+export async function updateIncome(id: string, input: unknown): Promise<IncomeActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+
+  const parsed = validateIncomeInput(input);
+  if (!parsed.ok) return { ok: false, errors: parsed.errors };
+
+  const updated = await createIncomeRepository(getDb()).update(user.id, id, parsed.value);
+  if (!updated) return { ok: false, message: NOT_FOUND };
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteIncome(id: string): Promise<IncomeActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+
+  const removed = await createIncomeRepository(getDb()).remove(user.id, id);
+  if (!removed) return { ok: false, message: NOT_FOUND };
+  refresh();
+  return { ok: true };
+}
