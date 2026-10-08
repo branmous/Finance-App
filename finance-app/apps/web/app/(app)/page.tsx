@@ -1,5 +1,5 @@
 import { CATEGORY_TYPES, currentPeriod, formatCop, formatPeriod, type CategoryType } from "@finance-app/core";
-import { createCategoryRepository, createExpenseRepository } from "@finance-app/db";
+import { createCategoryRepository, createExpenseRepository, createIncomeRepository } from "@finance-app/db";
 import Link from "next/link";
 
 import { Guilloche } from "@/components/guilloche";
@@ -31,6 +31,8 @@ export default async function DashboardPage() {
   const period = currentPeriod();
   const categories = user ? await createCategoryRepository(getDb()).list(user.id) : [];
   const monthTotal = user ? await createExpenseRepository(getDb()).totalByPeriod(user.id, period) : 0;
+
+  const incomeTotal = user ? await createIncomeRepository(getDb()).totalByPeriod(user.id, period) : 0;
 
   const counts = CATEGORY_TYPES.map((type) => ({
     type,
@@ -94,7 +96,18 @@ export default async function DashboardPage() {
           This month
         </h2>
         <p className="mt-1 text-sm text-paper-muted">The remaining panels fill in as the app grows.</p>
-        <ul className="mt-4 grid gap-4 sm:grid-cols-3">
+        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <li className="rounded-panel border border-paper-line p-5">
+            <h3 className="text-base font-semibold">Income in {formatPeriod(period)}</h3>
+            <p className="mt-1 text-sm text-paper-muted">Total of income counted toward this month.</p>
+            <p className="mt-6 font-display text-3xl font-semibold">{formatCop(incomeTotal)}</p>
+            <Link
+              href="/monthly-income"
+              className="mt-3 inline-block text-sm font-semibold text-leaf underline underline-offset-4"
+            >
+              View monthly income
+            </Link>
+          </li>
           <li className="rounded-panel border border-paper-line p-5">
             <h3 className="text-base font-semibold">Spent in {formatPeriod(period)}</h3>
             <p className="mt-1 text-sm text-paper-muted">Total of expenses counted toward this month.</p>

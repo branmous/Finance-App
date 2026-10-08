@@ -26,6 +26,8 @@
     ".": "./src/index.ts",
     "./categories": "./src/categories/category.ts",
     "./expenses": "./src/expenses/index.ts",
-    "./debts": "./src/debts/index.ts"
+    "./debts": "./src/debts/index.ts",
+    "./incomes": "./src/incomes/index.ts",
+    "./budget": "./src/budget/index.ts"
   }
 }
