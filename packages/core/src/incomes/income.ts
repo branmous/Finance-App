@@ -1,4 +1,5 @@
 import { isValidPeriod } from "../expenses/period";
+import { validationError, type ValidationError } from "../validation";
 
 export const INCOME_NOTE_MAX_LENGTH = 140;
 
@@ -14,7 +15,7 @@ export type IncomeInput = {
   note: string;
 };
 
-export type IncomeInputErrors = Partial<Record<keyof IncomeInput, string>>;
+export type IncomeInputErrors = Partial<Record<keyof IncomeInput, ValidationError>>;
 
 export type IncomeValidationResult =
   | { ok: true; value: IncomeInput }
@@ -22,25 +23,25 @@ export type IncomeValidationResult =
 
 export function validateIncomeInput(input: unknown): IncomeValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { amountMinor: "Income data is required." } };
+    return { ok: false, errors: { amountMinor: validationError("incomeDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
   const errors: IncomeInputErrors = {};
 
   if (typeof raw.type !== "string" || !(INCOME_TYPES as readonly string[]).includes(raw.type)) {
-    errors.type = "Choose an income type.";
+    errors.type = validationError("chooseIncomeType");
   }
 
   if (typeof raw.amountMinor !== "number" || !Number.isSafeInteger(raw.amountMinor) || raw.amountMinor <= 0) {
-    errors.amountMinor = "Enter an amount greater than zero.";
+    errors.amountMinor = validationError("amountPositive");
   }
 
-  if (!isValidPeriod(raw.period)) errors.period = "Choose a valid month.";
+  if (!isValidPeriod(raw.period)) errors.period = validationError("invalidMonth");
 
   const note = typeof raw.note === "string" ? raw.note.trim() : "";
   if (note.length > INCOME_NOTE_MAX_LENGTH) {
-    errors.note = `Note must be at most ${INCOME_NOTE_MAX_LENGTH} characters.`;
+    errors.note = validationError("noteTooLong", { max: INCOME_NOTE_MAX_LENGTH });
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };

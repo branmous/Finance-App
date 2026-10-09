@@ -51,4 +51,7 @@ export type { IncomeInput, IncomeInputErrors, IncomeType, IncomeValidationResult
 export { TIGHT_THRESHOLD_PERCENT, computeBalance } from "./budget/balance";
 export type { Balance, BalanceStatus } from "./budget/balance";
 
+export { validationError } from "./validation";
+export type { ValidationError } from "./validation";
+
 export * from "./travels/index";

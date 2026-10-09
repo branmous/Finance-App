@@ -1,5 +1,6 @@
 import { currentPeriod, type CategoryColor, type CategoryIcon, type CategoryType } from "@finance-app/core";
 import { createCategoryRepository, createDebtRepository } from "@finance-app/db";
+import { getTranslations } from "next-intl/server";
 
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -8,7 +9,10 @@ import type { CategoryOption } from "../monthly-expenses/expense-form-dialog";
 import type { DebtItem } from "./debt-form-dialog";
 import { DebtsView } from "./debts-view";
 
-export const metadata = { title: "Debts · Finance App" };
+export async function generateMetadata() {
+  const t = await getTranslations("debts");
+  return { title: t("metaTitle") };
+}
 
 export default async function DebtsPage() {
   const user = await getSessionUser();

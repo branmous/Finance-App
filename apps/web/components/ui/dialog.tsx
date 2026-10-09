@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { Icon } from "./icon";
@@ -8,6 +9,7 @@ type DialogProps = { open: boolean; title: string; onClose: () => void; children
 
 /** Modal built on the native <dialog>: focus trap, Esc to close and backdrop come for free. */
 export function Dialog({ open, title, onClose, children }: DialogProps) {
+  const t = useTranslations("common");
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t("close")}
               className="-mr-2 -mt-1 rounded-field p-2 text-paper-muted hover:bg-leaf-tint hover:text-ink"
             >
               <Icon name="close" />

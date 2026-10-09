@@ -236,6 +236,9 @@ describe("expense repository", () => {
       await expect(repo.create(alice.id, { ...input, parentId: parent.id })).rejects.toBeInstanceOf(
         InvalidExpenseParentError,
       );
+      await expect(repo.create(alice.id, { ...input, parentId: parent.id })).rejects.toMatchObject({
+        code: "parentOtherMonth",
+      });
     });
 
     it("rejects a parent that does not exist or belongs to someone else", async () => {
@@ -273,6 +276,9 @@ describe("expense repository", () => {
       await expect(repo.update(alice.id, expense.id, { ...input, parentId: expense.id })).rejects.toBeInstanceOf(
         InvalidExpenseParentError,
       );
+      await expect(repo.update(alice.id, expense.id, { ...input, parentId: expense.id })).rejects.toMatchObject({
+        code: "paidWithItself",
+      });
     });
 
     it("refuses to move a linked expense, or a parent with children, to another month", async () => {

@@ -1,0 +1,32 @@
+{
+  "metaTitle": "Monthly income · Finance App",
+  "title": "Monthly income",
+  "subtitle": "Record your payroll and other income for each month.",
+  "new": "New income",
+  "totalReceived": "Total received in {month}",
+  "count": "{count, plural, one {# income} other {# incomes}}",
+  "emptyTitle": "No income in {month}",
+  "emptyDescription": "Add your payroll or any other income for this month and it will show up here with the total.",
+  "emptyAction": "Add an income",
+  "edit": "Edit {type} income",
+  "delete": "Delete {type} income",
+  "deleteTitle": "Delete income",
+  "deleteConfirm": "Delete the <strong>{type}</strong> income of <strong>{amount}</strong>? This cannot be undone.",
+  "deleteAction": "Delete income",
+  "deleteFailed": "The income could not be deleted.",
+  "formEditTitle": "Edit income",
+  "formNewTitle": "New income",
+  "type": "Type",
+  "amount": "Amount received (COP)",
+  "period": "Counts toward month",
+  "periodHint": "The month this income belongs to.",
+  "note": "Note (optional)",
+  "save": "Save changes",
+  "create": "Add income",
+  "types": {
+    "payroll": "Payroll",
+    "freelance": "Freelance",
+    "rent": "Rent received",
+    "other": "Other"
+  }
+}

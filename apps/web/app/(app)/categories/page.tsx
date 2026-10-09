@@ -1,5 +1,6 @@
 import type { CategoryColor, CategoryIcon, CategoryType } from "@finance-app/core";
 import { createCategoryRepository } from "@finance-app/db";
+import { getTranslations } from "next-intl/server";
 
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -7,7 +8,10 @@ import { getSessionUser } from "@/lib/session";
 import { CategoriesView } from "./categories-view";
 import type { CategoryItem } from "./category-form-dialog";
 
-export const metadata = { title: "Categories · Finance App" };
+export async function generateMetadata() {
+  const t = await getTranslations("categories");
+  return { title: t("metaTitle") };
+}
 
 export default async function CategoriesPage() {
   const user = await getSessionUser();

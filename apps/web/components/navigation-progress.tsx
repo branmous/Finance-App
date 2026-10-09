@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 /**
@@ -9,6 +10,7 @@ import { useEffect, useState } from "react";
  * Also covers `?period=` changes, which `loading.tsx` does not.
  */
 export function NavigationProgress() {
+  const t = useTranslations("common");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [state, setState] = useState<"idle" | "loading" | "done">("idle");
@@ -44,7 +46,7 @@ export function NavigationProgress() {
   return (
     <div
       role="progressbar"
-      aria-label="Loading page"
+      aria-label={t("loadingPage")}
       className="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 bg-leaf-tint"
     >
       <div

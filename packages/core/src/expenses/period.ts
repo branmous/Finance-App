@@ -18,10 +18,10 @@ export function shiftPeriod(period: string, months: number): string {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
-export function formatPeriod(period: string): string {
+export function formatPeriod(period: string, locale = "en-US"): string {
   const match = PERIOD_PATTERN.exec(period);
   if (!match) throw new Error(`Invalid period: ${period}`);
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
     new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1)),
   );
 }

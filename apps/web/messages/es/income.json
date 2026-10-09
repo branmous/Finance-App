@@ -1,0 +1,32 @@
+{
+  "metaTitle": "Ingresos mensuales · Finance App",
+  "title": "Ingresos mensuales",
+  "subtitle": "Registra tu nómina y otros ingresos de cada mes.",
+  "new": "Nuevo ingreso",
+  "totalReceived": "Total recibido en {month}",
+  "count": "{count, plural, one {# ingreso} other {# ingresos}}",
+  "emptyTitle": "Sin ingresos en {month}",
+  "emptyDescription": "Agrega tu nómina o cualquier otro ingreso de este mes y aparecerá aquí con el total.",
+  "emptyAction": "Agregar un ingreso",
+  "edit": "Editar ingreso de {type}",
+  "delete": "Eliminar ingreso de {type}",
+  "deleteTitle": "Eliminar ingreso",
+  "deleteConfirm": "¿Eliminar el ingreso de <strong>{type}</strong> por <strong>{amount}</strong>? Esta acción no se puede deshacer.",
+  "deleteAction": "Eliminar ingreso",
+  "deleteFailed": "No se pudo eliminar el ingreso.",
+  "formEditTitle": "Editar ingreso",
+  "formNewTitle": "Nuevo ingreso",
+  "type": "Tipo",
+  "amount": "Monto recibido (COP)",
+  "period": "Cuenta para el mes",
+  "periodHint": "El mes al que pertenece este ingreso.",
+  "note": "Nota (opcional)",
+  "save": "Guardar cambios",
+  "create": "Agregar ingreso",
+  "types": {
+    "payroll": "Nómina",
+    "freelance": "Trabajo independiente",
+    "rent": "Arriendo recibido",
+    "other": "Otro"
+  }
+}

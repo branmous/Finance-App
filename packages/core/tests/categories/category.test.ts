@@ -41,7 +41,10 @@ describe("validateCategoryInput", () => {
 
     const result = validateCategoryInput({ ...valid, name: atLimit + "a" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors.name).toBeDefined();
+    // Errors are codes with parameters, never display text: the UI translates them.
+    if (!result.ok) {
+      expect(result.errors.name).toEqual({ code: "nameTooLong", params: { max: CATEGORY_NAME_MAX_LENGTH } });
+    }
   });
 
   it("treats payment info as optional and trims it", () => {
@@ -58,7 +61,12 @@ describe("validateCategoryInput", () => {
 
     const result = validateCategoryInput({ ...valid, paymentInfo: atLimit + "a" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors.paymentInfo).toBeDefined();
+    if (!result.ok) {
+      expect(result.errors.paymentInfo).toEqual({
+        code: "paymentInfoTooLong",
+        params: { max: CATEGORY_PAYMENT_INFO_MAX_LENGTH },
+      });
+    }
   });
 
   it("rejects a type, color or icon outside the allowed lists", () => {

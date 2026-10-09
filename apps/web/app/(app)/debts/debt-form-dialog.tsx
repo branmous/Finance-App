@@ -7,12 +7,16 @@ import {
   monthsBetween,
   type DebtInputErrors,
 } from "@finance-app/core/debts";
-import { currentPeriod, formatCop, formatPeriod, isValidPeriod, shiftPeriod } from "@finance-app/core/expenses";
+import { currentPeriod, formatCop, isValidPeriod, shiftPeriod } from "@finance-app/core/expenses";
+import type { ValidationError } from "@finance-app/core";
+import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
+import { useFormatters } from "@/lib/format";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import type { CategoryOption } from "../monthly-expenses/expense-form-dialog";
 import { createDebt, updateDebt } from "./actions";
@@ -47,15 +51,20 @@ function parseAmount(text: string): number {
 }
 
 export function DebtFormDialog({ open, debt, ...rest }: Props) {
+  const t = useTranslations("debts");
   // The inner form is keyed by debt so its state resets every time the dialog opens for another item.
   return (
-    <Dialog open={open} title={debt ? "Edit debt" : "New debt"} onClose={rest.onClose}>
+    <Dialog open={open} title={debt ? t("formEditTitle") : t("formNewTitle")} onClose={rest.onClose}>
       <DebtForm key={debt?.id ?? "new"} debt={debt} {...rest} />
     </Dialog>
   );
 }
 
 function DebtForm({ debt, categories, onClose }: Omit<Props, "open">) {
+  const t = useTranslations("debts");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
+  const format = useFormatters();
   const [name, setName] = useState(debt?.name ?? "");
   const [categoryId, setCategoryId] = useState(debt?.categoryId ?? categories[0]?.id ?? "");
   const [amount, setAmount] = useState(debt ? String(debt.installmentMinor) : "");
@@ -66,7 +75,7 @@ function DebtForm({ debt, categories, onClose }: Omit<Props, "open">) {
   const [alreadyPaid, setAlreadyPaid] = useState("0");
   const [note, setNote] = useState(debt?.note ?? "");
   const [errors, setErrors] = useState<DebtInputErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ValidationError | null>(null);
   const [pending, startTransition] = useTransition();
 
   const total = isValidPeriod(startPeriod) && isValidPeriod(endPeriod) ? monthsBetween(startPeriod, endPeriod) : 0;
@@ -74,10 +83,10 @@ function DebtForm({ debt, categories, onClose }: Omit<Props, "open">) {
 
   function summary(): string | null {
     if (total === 0) return null;
-    const count = `${total} ${total === 1 ? "installment" : "installments"}`;
+    const count = t("summaryCount", { count: total });
     return Number.isNaN(installment)
       ? count
-      : `${count} · ${formatCop(installment * total)} in total · last one in ${formatPeriod(endPeriod)}`;
+      : t("summaryFull", { count, total: formatCop(installment * total), month: format.month(endPeriod) });
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -109,98 +118,96 @@ function DebtForm({ debt, categories, onClose }: Omit<Props, "open">) {
     <form onSubmit={handleSubmit} className="space-y-5">
       <Input
         id="debt-name"
-        label="What is it for?"
+        label={t("name")}
         value={name}
         onChange={(event) => setName(event.target.value)}
-        placeholder="Motorbike insurance"
-        error={errors.name}
+        placeholder={t("namePlaceholder")}
+        error={message(errors.name)}
         autoFocus
         required
       />
 
       <Select
         id="debt-category"
-        label="Category"
+        label={t("category")}
         value={categoryId}
         onChange={(event) => setCategoryId(event.target.value)}
         options={categories.map((category) => ({ value: category.id, label: category.name }))}
-        error={errors.categoryId}
+        error={message(errors.categoryId)}
       />
 
       <Input
         id="debt-amount"
-        label="Monthly payment (COP)"
+        label={t("monthlyPayment")}
         value={amount}
         onChange={(event) => setAmount(event.target.value)}
         inputMode="numeric"
         placeholder="300000"
-        error={errors.installmentMinor}
+        error={message(errors.installmentMinor)}
         required
       />
 
       <div className="grid grid-cols-2 gap-3">
         <Input
           id="debt-start"
-          label="First payment"
+          label={t("firstPayment")}
           type="month"
           value={startPeriod}
           onChange={(event) => setStartPeriod(event.target.value)}
-          error={errors.startPeriod}
+          error={message(errors.startPeriod)}
           required
         />
         <Input
           id="debt-end"
-          label="Last payment"
+          label={t("lastPayment")}
           type="month"
           value={endPeriod}
           onChange={(event) => setEndPeriod(event.target.value)}
-          error={errors.endPeriod}
+          error={message(errors.endPeriod)}
           required
         />
       </div>
       <p className="-mt-3 min-h-5 text-sm text-paper-muted" aria-live="polite" data-testid="debt-summary">
-        {summary() ?? `Pick the first and last month (up to ${DEBT_MAX_INSTALLMENTS} installments).`}
+        {summary() ?? t("summaryHint", { max: DEBT_MAX_INSTALLMENTS })}
       </p>
 
       {debt ? null : (
         <div>
           <Input
             id="debt-paid"
-            label="Installments already paid"
+            label={t("alreadyPaid")}
             type="number"
             min={0}
             max={total || undefined}
             value={alreadyPaid}
             onChange={(event) => setAlreadyPaid(event.target.value)}
-            error={errors.alreadyPaid}
+            error={message(errors.alreadyPaid)}
           />
-          <p className="mt-1.5 text-xs text-paper-muted">
-            Counted from the first payment on. They are added to your monthly expenses as paid.
-          </p>
+          <p className="mt-1.5 text-xs text-paper-muted">{t("alreadyPaidHint")}</p>
         </div>
       )}
 
       <Input
         id="debt-note"
-        label="Note (optional)"
+        label={t("note")}
         value={note}
         onChange={(event) => setNote(event.target.value)}
         maxLength={DEBT_NOTE_MAX_LENGTH + 10}
-        error={errors.note}
+        error={message(errors.note)}
       />
 
       {formError ? (
         <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
-          {formError}
+          {message(formError)}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button type="submit" loading={pending}>
-          {debt ? "Save changes" : "Add debt"}
+          {debt ? t("save") : t("create")}
         </Button>
       </div>
     </form>

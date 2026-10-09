@@ -1,0 +1,19 @@
+{
+  "welcome": "Bienvenido de nuevo, {name}",
+  "subtitle": "Así están organizados tus gastos.",
+  "yourCategories": "Tus categorías",
+  "byTypeLabel": "Categorías por tipo",
+  "noCategories": "Aún no tienes categorías. <link>Crea tu primera categoría</link> para empezar a agrupar tus gastos.",
+  "thisMonth": "Este mes",
+  "thisMonthHint": "Los demás paneles se irán llenando a medida que crezca la app.",
+  "incomeIn": "Ingresos de {month}",
+  "incomeHint": "Total de los ingresos que cuentan para este mes.",
+  "viewIncome": "Ver ingresos mensuales",
+  "spentIn": "Gastado en {month}",
+  "spentHint": "Total de los gastos que cuentan para este mes.",
+  "viewExpenses": "Ver gastos mensuales",
+  "pending": {
+    "whereItWent": { "title": "A dónde fue", "note": "Un desglose por categoría." },
+    "latest": { "title": "Últimos gastos", "note": "Tus registros más recientes." }
+  }
+}

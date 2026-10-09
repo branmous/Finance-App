@@ -1,3 +1,5 @@
+import { validationError, type ValidationError } from "../validation";
+
 export const CATEGORY_TYPES = [
   "subscription",
   "household",
@@ -47,7 +49,7 @@ export type CategoryInput = {
   paymentInfo: string;
 };
 
-export type CategoryInputErrors = Partial<Record<keyof CategoryInput, string>>;
+export type CategoryInputErrors = Partial<Record<keyof CategoryInput, ValidationError>>;
 
 export type CategoryValidationResult =
   | { ok: true; value: CategoryInput }
@@ -59,7 +61,7 @@ function isOneOf<T extends string>(list: readonly T[], value: unknown): value is
 
 export function validateCategoryInput(input: unknown): CategoryValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { name: "Category data is required." } };
+    return { ok: false, errors: { name: validationError("categoryDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
@@ -67,18 +69,18 @@ export function validateCategoryInput(input: unknown): CategoryValidationResult 
 
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
   if (name.length === 0) {
-    errors.name = "Name is required.";
+    errors.name = validationError("nameRequired");
   } else if (name.length > CATEGORY_NAME_MAX_LENGTH) {
-    errors.name = `Name must be at most ${CATEGORY_NAME_MAX_LENGTH} characters.`;
+    errors.name = validationError("nameTooLong", { max: CATEGORY_NAME_MAX_LENGTH });
   }
 
-  if (!isOneOf(CATEGORY_TYPES, raw.type)) errors.type = "Choose a valid type.";
-  if (!isOneOf(CATEGORY_COLORS, raw.color)) errors.color = "Choose a valid color.";
-  if (!isOneOf(CATEGORY_ICONS, raw.icon)) errors.icon = "Choose a valid icon.";
+  if (!isOneOf(CATEGORY_TYPES, raw.type)) errors.type = validationError("invalidType");
+  if (!isOneOf(CATEGORY_COLORS, raw.color)) errors.color = validationError("invalidColor");
+  if (!isOneOf(CATEGORY_ICONS, raw.icon)) errors.icon = validationError("invalidIcon");
 
   const paymentInfo = typeof raw.paymentInfo === "string" ? raw.paymentInfo.trim() : "";
   if (paymentInfo.length > CATEGORY_PAYMENT_INFO_MAX_LENGTH) {
-    errors.paymentInfo = `Payment info must be at most ${CATEGORY_PAYMENT_INFO_MAX_LENGTH} characters.`;
+    errors.paymentInfo = validationError("paymentInfoTooLong", { max: CATEGORY_PAYMENT_INFO_MAX_LENGTH });
   }
 
   if (Object.keys(errors).length > 0) {

@@ -127,6 +127,7 @@ test("a user never sees another user's categories", async ({ page }) => {
   await openCategories(page);
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await signIn(page, OWNER.email);
   await openCategories(page);

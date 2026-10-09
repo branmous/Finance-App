@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"no unit tests in apps/web yet\" && exit 0",
+    "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -16,6 +16,7 @@
     "@finance-app/db": "workspace:*",
     "next": "^14.2.13",
     "next-auth": "^4.24.8",
+    "next-intl": "^3.26.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -29,6 +30,7 @@
     "eslint-config-next": "^14.2.13",
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vitest": "^2"
   }
 }

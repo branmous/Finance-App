@@ -1,10 +1,12 @@
 import type { TripSchedule } from "@finance-app/core/travels";
+import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/icon";
 import { PHASE_LOOKS, describeSchedule } from "@/lib/trip-schedule-labels";
 
 /** Badge with the phase of the trip (upcoming / in progress / finished). Renders nothing for a trip without dates. */
 export function TripPhaseBadge({ schedule }: { schedule: TripSchedule }) {
+  const t = useTranslations("travels.phases");
   if (schedule.phase === "undated") return null;
   const look = PHASE_LOOKS[schedule.phase];
   return (
@@ -17,14 +19,15 @@ export function TripPhaseBadge({ schedule }: { schedule: TripSchedule }) {
         <span aria-hidden="true" className="size-1.5 animate-live rounded-full bg-white" />
       ) : null}
       <Icon name={look.icon} width={14} height={14} />
-      {look.label}
+      {t(schedule.phase)}
     </span>
   );
 }
 
 /** "Starts in 9 days", "Day 3 of 8 · 5 days left", "Ended 2 days ago". */
 export function TripPhaseDetail({ schedule, className = "" }: { schedule: TripSchedule; className?: string }) {
-  const text = describeSchedule(schedule);
+  const t = useTranslations("travels.schedule");
+  const text = describeSchedule(schedule, (key, values) => t(key, values));
   if (!text) return null;
   return (
     <span data-testid="trip-phase-detail" className={className}>
@@ -35,12 +38,13 @@ export function TripPhaseDetail({ schedule, className = "" }: { schedule: TripSc
 
 /** How far through the trip we are; only meaningful while it is in progress. */
 export function TripProgress({ schedule }: { schedule: TripSchedule }) {
+  const t = useTranslations("travels");
   if (schedule.phase !== "ongoing" || !schedule.totalDays || !schedule.dayNumber) return null;
   const percent = Math.round((schedule.dayNumber / schedule.totalDays) * 100);
   return (
     <div
       role="progressbar"
-      aria-label="Trip progress"
+      aria-label={t("progress")}
       aria-valuemin={0}
       aria-valuemax={schedule.totalDays}
       aria-valuenow={schedule.dayNumber}
@@ -53,6 +57,7 @@ export function TripProgress({ schedule }: { schedule: TripSchedule }) {
 
 /** Stamp for a trip whose expenses are all paid and whose accounts are even. */
 export function SettledStamp({ size = "sm" }: { size?: "sm" | "lg" }) {
+  const t = useTranslations("travels");
   return (
     <span
       data-testid="trip-settled"
@@ -61,7 +66,7 @@ export function SettledStamp({ size = "sm" }: { size?: "sm" | "lg" }) {
       }`}
     >
       <Icon name="checkCircle" width={size === "lg" ? 18 : 14} height={size === "lg" ? 18 : 14} />
-      Settled
+      {t("settled")}
     </span>
   );
 }

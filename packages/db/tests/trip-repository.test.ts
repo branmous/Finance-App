@@ -151,7 +151,9 @@ describe("trip repository", () => {
     const { repo, alice, group, me, ana, leo, expense } = await setup();
     const added = await repo.addParticipant(alice.id, group.id, "Sofia");
     expect(added).toMatchObject({ name: "Sofia", position: 3 });
-    await expect(repo.addParticipant(alice.id, group.id, "ana")).rejects.toBeInstanceOf(TripParticipantRuleError);
+    await expect(repo.addParticipant(alice.id, group.id, "ana")).rejects.toMatchObject({
+      code: "duplicatePeople",
+    });
 
     await repo.createExpense(alice.id, group.id, expense(ana.id, [me.id, ana.id]));
     await expect(repo.removeParticipant(alice.id, group.id, ana.id)).rejects.toBeInstanceOf(TripParticipantInUseError);
@@ -163,9 +165,11 @@ describe("trip repository", () => {
     const { repo, alice, group, me, ana } = await setup();
     const solo = await repo.create(alice.id, { name: "Punta Cana", kind: "individual", startDate: null, endDate: null, participants: ["Me"] });
     await expect(repo.addParticipant(alice.id, solo.id, "Ana")).rejects.toBeInstanceOf(TripParticipantRuleError);
+    await expect(repo.addParticipant(alice.id, solo.id, "Ana")).rejects.toMatchObject({ code: "individualOnlyYou" });
 
     await repo.removeParticipant(alice.id, group.id, (await repo.get(alice.id, group.id))!.participants[2]!.id);
     await expect(repo.removeParticipant(alice.id, group.id, ana.id)).rejects.toBeInstanceOf(TripParticipantRuleError);
+    await expect(repo.removeParticipant(alice.id, group.id, ana.id)).rejects.toMatchObject({ code: "groupNeedsTwo" });
     expect(me.id).toBeDefined();
   });
 

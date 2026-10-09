@@ -1,18 +1,18 @@
 "use server";
 
-import { validateIncomeInput, type IncomeInputErrors } from "@finance-app/core";
+import { validateIncomeInput, validationError, type IncomeInputErrors, type ValidationError } from "@finance-app/core";
 import { createIncomeRepository } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
+import { SESSION_EXPIRED } from "@/lib/action-errors";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
 
 export type IncomeActionResult =
   | { ok: true }
-  | { ok: false; errors?: IncomeInputErrors; message?: string };
+  | { ok: false; errors?: IncomeInputErrors; message?: ValidationError };
 
-const SESSION_EXPIRED = "Your session has expired. Sign in again.";
-const NOT_FOUND = "This income no longer exists.";
+const NOT_FOUND = validationError("incomeNotFound");
 
 function refresh() {
   revalidatePath("/monthly-income");

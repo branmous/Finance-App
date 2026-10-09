@@ -1,20 +1,20 @@
 "use server";
 
-import { validateCategoryInput, type CategoryInputErrors } from "@finance-app/core";
+import { validateCategoryInput, validationError, type CategoryInputErrors, type ValidationError } from "@finance-app/core";
 import { CategoryInUseError, DuplicateCategoryNameError, createCategoryRepository } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
+import { SESSION_EXPIRED } from "@/lib/action-errors";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
 
 export type CategoryActionResult =
   | { ok: true }
-  | { ok: false; errors?: CategoryInputErrors; message?: string };
+  | { ok: false; errors?: CategoryInputErrors; message?: ValidationError };
 
-const SESSION_EXPIRED = "Your session has expired. Sign in again.";
-const NOT_FOUND = "This category no longer exists.";
-const DUPLICATE_NAME = "You already have a category with this name.";
-const IN_USE = "This category has expenses, so it cannot be deleted. Delete or move its expenses first.";
+const NOT_FOUND = validationError("categoryNotFound");
+const DUPLICATE_NAME = validationError("duplicateCategoryName");
+const IN_USE = validationError("categoryInUse");
 
 function refresh() {
   revalidatePath("/categories");

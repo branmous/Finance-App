@@ -29,15 +29,19 @@ export type PeriodSummary = { total: number; paid: number; pending: number };
 
 /** The category does not exist or belongs to another user. */
 export class ExpenseCategoryNotFoundError extends Error {
+  readonly code = "categoryNotFound";
   constructor() {
     super("Category not found");
     this.name = "ExpenseCategoryNotFoundError";
   }
 }
 
-/** The chosen "paid with" expense breaks a linking rule; the message is safe to show. */
+/** The chosen "paid with" expense breaks a linking rule; `code` is the validation code the UI translates. */
 export class InvalidExpenseParentError extends Error {
-  constructor(message: string) {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
     super(message);
     this.name = "InvalidExpenseParentError";
   }
@@ -77,28 +81,37 @@ export function createExpenseRepository(db: DbClient) {
         : [];
       if (current && child) {
         if (input.parentId) {
-          throw new InvalidExpenseParentError("This expense has linked expenses, so it cannot be paid with another.");
+          throw new InvalidExpenseParentError(
+            "hasLinkedExpenses",
+            "This expense has linked expenses, so it cannot be paid with another.",
+          );
         }
         if (current.period !== input.period) {
-          throw new InvalidExpenseParentError("Make its linked expenses independent before moving it to another month.");
+          throw new InvalidExpenseParentError(
+            "makeLinkedIndependent",
+            "Make its linked expenses independent before moving it to another month.",
+          );
         }
       }
     }
 
     if (!input.parentId) return;
     if (input.parentId === selfId) {
-      throw new InvalidExpenseParentError("An expense cannot be paid with itself.");
+      throw new InvalidExpenseParentError("paidWithItself", "An expense cannot be paid with itself.");
     }
     const [parent] = await db
       .select({ period: expenses.period, parentId: expenses.parentId })
       .from(expenses)
       .where(and(eq(expenses.id, input.parentId), eq(expenses.userId, userId)));
-    if (!parent) throw new InvalidExpenseParentError("The expense to pay with no longer exists.");
+    if (!parent) throw new InvalidExpenseParentError("parentNotFound", "The expense to pay with no longer exists.");
     if (parent.parentId) {
-      throw new InvalidExpenseParentError("Choose an expense that is not itself paid with another.");
+      throw new InvalidExpenseParentError(
+        "parentIsChild",
+        "Choose an expense that is not itself paid with another.",
+      );
     }
     if (parent.period !== input.period) {
-      throw new InvalidExpenseParentError("Both expenses must belong to the same month.");
+      throw new InvalidExpenseParentError("parentOtherMonth", "Both expenses must belong to the same month.");
     }
   }
 

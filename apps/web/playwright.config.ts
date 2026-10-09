@@ -5,6 +5,8 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    // The app follows the browser language until a language is chosen; the specs assert English text.
+    locale: "en-US",
     trace: "on-first-retry",
   },
   webServer: {

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ValidationError } from "@finance-app/core";
 import { formatCop } from "@finance-app/core/expenses";
 import {
   TRIP_EXPENSE_CATEGORIES,
@@ -9,16 +10,18 @@ import {
   isTripSettled,
   splitAmount,
 } from "@finance-app/core/travels";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useTransition, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
-import { TRIP_CATEGORY_LABELS, TRIP_KIND_LABELS } from "@/lib/travel-labels";
-import { formatTripDates, formatTripDay } from "@/lib/trip-dates";
+import { useFormatters } from "@/lib/format";
+import { formatTripDates } from "@/lib/trip-dates";
 import { useToday } from "@/lib/use-today";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import {
   addTripPerson,
@@ -44,7 +47,16 @@ type Props = {
 
 const CHIP = "min-h-9 rounded-full border px-3 text-sm font-medium transition-colors";
 
+const strong = (chunks: ReactNode) => <strong>{chunks}</strong>;
+const strongInk = (chunks: ReactNode) => <strong className="text-ink">{chunks}</strong>;
+
 export function TripDetail({ trip, people, expenses: savedExpenses, settlements }: Props) {
+  const t = useTranslations("travels.detail");
+  const tTravels = useTranslations("travels");
+  const tCategories = useTranslations("travels.categories");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
+  const format = useFormatters();
   const router = useRouter();
   const isGroup = trip.kind === "group";
   const nameOf = (id: string | null) => people.find((person) => person.id === id)?.name ?? "—";
@@ -77,13 +89,13 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
   const transfers = useMemo(() => computeSettlementPlan(summary.people), [summary.people]);
   const pendingCount = expenses.filter((expense) => expense.status === "pending").length;
 
-  function run(action: () => Promise<{ ok: boolean; message?: string }>, onFail?: () => void) {
+  function run(action: () => Promise<{ ok: boolean; message?: ValidationError }>, onFail?: () => void) {
     setNotice(null);
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
         onFail?.();
-        setNotice(result.message ?? "Something went wrong. Try again.");
+        setNotice(message(result.message) ?? t("somethingWrong"));
       }
     });
   }
@@ -97,7 +109,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
       .map((person) => person.id)
       .filter((id) => (id === personId ? !expense.shareIds.includes(id) : expense.shareIds.includes(id)));
     if (next.length === 0) {
-      setNotice("An expense needs at least one person.");
+      setNotice(t("needOnePerson"));
       return;
     }
     patchExpense(expense.id, { shareIds: next });
@@ -125,7 +137,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
       if (result.ok) router.push("/travels");
       else {
         setDeletingTrip(false);
-        setNotice(result.message);
+        setNotice(message(result.message) ?? t("somethingWrong"));
       }
     });
   }
@@ -142,23 +154,23 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
     );
   }
 
-  const dates = formatTripDates(trip.startDate, trip.endDate);
+  const dates = formatTripDates(trip.startDate, trip.endDate, format.locale, (key, values) => tTravels(key, values));
   const categoryTotals = TRIP_EXPENSE_CATEGORIES.filter((category) => summary.byCategory[category]);
 
   return (
     <div className="mx-auto max-w-5xl">
       <Link href="/travels" className="inline-flex items-center gap-1 text-sm font-semibold text-leaf">
         <Icon name="chevronLeft" width={16} height={16} />
-        All trips
+        {t("allTrips")}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold">{trip.name}</h1>
           <p className="mt-1.5 text-paper-muted">
-            {TRIP_KIND_LABELS[trip.kind]} trip
+            {tTravels(`kindTrip.${trip.kind}`)}
             {dates ? ` · ${dates}` : ""}
-            {isGroup ? ` · ${people.length} people` : ""}
+            {isGroup ? ` · ${tTravels("peopleCount", { count: people.length })}` : ""}
           </p>
           {(schedule && schedule.phase !== "undated") || settled ? (
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -174,13 +186,13 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
           ) : null}
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setEditingTrip(true)} aria-label="Edit trip">
+          <Button variant="secondary" onClick={() => setEditingTrip(true)} aria-label={t("editLabel")}>
             <Icon name="pencil" width={18} height={18} />
-            Edit
+            {t("edit")}
           </Button>
-          <Button variant="secondary" className="hover:text-clay" onClick={() => setDeletingTrip(true)} aria-label="Delete trip">
+          <Button variant="secondary" className="hover:text-clay" onClick={() => setDeletingTrip(true)} aria-label={t("deleteLabel")}>
             <Icon name="trash" width={18} height={18} />
-            Delete
+            {t("delete")}
           </Button>
         </div>
       </div>
@@ -191,21 +203,21 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
         </p>
       ) : null}
 
-      <section aria-label="Totals" className="mt-6 grid gap-4 sm:grid-cols-3">
+      <section aria-label={t("totals")} className="mt-6 grid gap-4 sm:grid-cols-3">
         <div className="rounded-panel bg-ink p-6 text-paper sm:col-span-1">
-          <h2 className="text-sm font-medium text-ink-muted">Total cost</h2>
+          <h2 className="text-sm font-medium text-ink-muted">{t("totalCost")}</h2>
           <p className="mt-2 font-display text-4xl font-semibold" data-testid="trip-total">
             {formatCop(summary.totalMinor)}
           </p>
         </div>
         <div className="rounded-panel border border-paper-line bg-paper-raised p-6">
-          <h2 className="text-sm font-medium text-paper-muted">Paid</h2>
+          <h2 className="text-sm font-medium text-paper-muted">{t("paid")}</h2>
           <p className="mt-2 font-display text-3xl font-semibold" data-testid="trip-paid">
             {formatCop(summary.paidMinor)}
           </p>
         </div>
         <div className="rounded-panel border border-paper-line bg-paper-raised p-6">
-          <h2 className="text-sm font-medium text-paper-muted">Still to pay</h2>
+          <h2 className="text-sm font-medium text-paper-muted">{t("stillToPay")}</h2>
           <p className="mt-2 font-display text-3xl font-semibold" data-testid="trip-pending">
             {formatCop(summary.pendingMinor)}
           </p>
@@ -213,10 +225,10 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
       </section>
 
       {categoryTotals.length > 0 ? (
-        <ul aria-label="By category" className="mt-4 flex flex-wrap gap-2">
+        <ul aria-label={t("byCategory")} className="mt-4 flex flex-wrap gap-2">
           {categoryTotals.map((category) => (
             <li key={category} className="rounded-full bg-leaf-tint px-3 py-1 text-sm">
-              {TRIP_CATEGORY_LABELS[category]}{" "}
+              {tCategories(category)}{" "}
               <strong className="tabular-nums">{formatCop(summary.byCategory[category] ?? 0)}</strong>
             </li>
           ))}
@@ -226,16 +238,14 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
       {isGroup ? (
         <section aria-labelledby="balances" className="mt-10">
           <h2 id="balances" className="text-xl font-semibold">
-            Who owes whom
+            {t("whoOwes")}
           </h2>
-          <p className="mt-1 text-sm text-paper-muted">
-            Based on paid expenses. Positive means the others owe them; negative means they owe.
-          </p>
+          <p className="mt-1 text-sm text-paper-muted">{t("whoOwesHint")}</p>
           <ul className="mt-4 divide-y divide-paper-line border-y border-paper-line">
             {summary.people.map((person, index) => (
               <li key={person.id} className="flex items-center gap-3 py-3" data-testid={`balance-${person.name}`}>
                 <span
-                  aria-label={`Person ${index + 1}`}
+                  aria-label={t("personNumber", { number: index + 1 })}
                   className="w-7 shrink-0 text-right text-sm font-semibold tabular-nums text-paper-muted"
                   data-testid="person-number"
                 >
@@ -244,8 +254,10 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{person.name}</p>
                   <p className="text-sm text-paper-muted">
-                    Put in {formatCop(person.paidMinor)} · their part {formatCop(person.owedMinor)}
-                    {person.pendingShareMinor > 0 ? ` · ${formatCop(person.pendingShareMinor)} still to pay` : ""}
+                    {t("putIn", { paid: formatCop(person.paidMinor), owed: formatCop(person.owedMinor) })}
+                    {person.pendingShareMinor > 0
+                      ? ` · ${t("stillToPayShare", { amount: formatCop(person.pendingShareMinor) })}`
+                      : ""}
                   </p>
                 </div>
                 <span
@@ -254,17 +266,17 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                   }`}
                 >
                   {person.balanceMinor > 0
-                    ? `is owed ${formatCop(person.balanceMinor)}`
+                    ? t("isOwed", { amount: formatCop(person.balanceMinor) })
                     : person.balanceMinor < 0
-                      ? `owes ${formatCop(-person.balanceMinor)}`
-                      : "settled up"}
+                      ? t("owes", { amount: formatCop(-person.balanceMinor) })
+                      : t("settledUp")}
                 </span>
                 {index === 0 ? null : (
                   <Button
                     variant="ghost"
                     className="px-2.5 hover:text-clay"
                     onClick={() => run(() => removeTripPerson(trip.id, person.id))}
-                    aria-label={`Remove ${person.name}`}
+                    aria-label={t("remove", { name: person.name })}
                   >
                     <Icon name="close" width={18} height={18} />
                   </Button>
@@ -276,7 +288,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
           <form onSubmit={handleAddPerson} className="mt-4 flex flex-wrap items-end gap-3">
             <div>
               <label htmlFor="new-person" className="text-sm font-medium">
-                Add a person
+                {t("addPerson")}
               </label>
               <input
                 id="new-person"
@@ -286,7 +298,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
               />
             </div>
             <Button type="submit" variant="secondary" loading={pending} disabled={newPerson.trim() === ""}>
-              Add person
+              {t("addPersonButton")}
             </Button>
           </form>
         </section>
@@ -295,17 +307,17 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
       <section aria-labelledby="expenses" className="mt-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="expenses" className="text-xl font-semibold">
-            Expenses
+            {t("expenses")}
           </h2>
           <Button onClick={() => setEditingExpense(null)}>
             <Icon name="plus" width={18} height={18} />
-            New expense
+            {t("newExpense")}
           </Button>
         </div>
 
         {expenses.length === 0 ? (
           <p className="mt-4 rounded-panel border border-dashed border-paper-line px-6 py-10 text-center text-sm text-paper-muted">
-            No expenses yet. Add the flights, hotel and anything else this trip costs.
+            {t("noExpenses")}
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-paper-line border-y border-paper-line">
@@ -318,22 +330,24 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{expense.description}</p>
                       <p className="text-sm text-paper-muted">
-                        {TRIP_CATEGORY_LABELS[expense.category]}
-                        {expense.spentOn ? ` · ${formatTripDay(expense.spentOn)}` : ""}
-                        {expense.status === "paid" && isGroup ? ` · paid by ${nameOf(expense.paidById)}` : ""}
+                        {tCategories(expense.category)}
+                        {expense.spentOn ? ` · ${format.day(expense.spentOn)}` : ""}
+                        {expense.status === "paid" && isGroup
+                          ? ` · ${t("paidBy", { name: nameOf(expense.paidById) })}`
+                          : ""}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold tabular-nums">{formatCop(expense.amountMinor)}</p>
                       <p className={`text-xs font-semibold ${expense.status === "paid" ? "text-leaf" : "text-saffron"}`}>
-                        {expense.status === "paid" ? "Paid" : "Pending"}
+                        {expense.status === "paid" ? t("paidStatus") : t("pendingStatus")}
                       </p>
                     </div>
                     <Button
                       variant="ghost"
                       className="px-2.5"
                       onClick={() => setEditingExpense(expense)}
-                      aria-label={`Edit ${expense.description}`}
+                      aria-label={t("editExpense", { name: expense.description })}
                     >
                       <Icon name="pencil" width={18} height={18} />
                     </Button>
@@ -341,7 +355,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                       variant="ghost"
                       className="px-2.5 hover:text-clay"
                       onClick={() => setDeletingExpense(expense)}
-                      aria-label={`Delete ${expense.description}`}
+                      aria-label={t("deleteExpense", { name: expense.description })}
                     >
                       <Icon name="trash" width={18} height={18} />
                     </Button>
@@ -349,7 +363,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
 
                   {isGroup ? (
                     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                      <div className="flex flex-wrap gap-2" role="group" aria-label={`Who pays for ${expense.description}`}>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label={t("whoPays", { name: expense.description })}>
                         {people.map((person) => {
                           const on = expense.shareIds.includes(person.id);
                           return (
@@ -357,7 +371,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                               key={person.id}
                               type="button"
                               aria-pressed={on}
-                              aria-label={`${person.name} pays for ${expense.description}`}
+                              aria-label={t("personPays", { person: person.name, name: expense.description })}
                               onClick={() => toggleShare(expense, person.id)}
                               className={`${CHIP} ${
                                 on
@@ -371,18 +385,18 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                         })}
                       </div>
                       <p className="text-sm text-paper-muted" data-testid="expense-each">
-                        {formatCop(eachShare)} each
+                        {t("each", { amount: formatCop(eachShare) })}
                       </p>
                       <select
-                        aria-label={`Paid by for ${expense.description}`}
+                        aria-label={t("paidByFor", { name: expense.description })}
                         value={expense.paidById ?? ""}
                         onChange={(event) => setPayment(expense, event.target.value === "" ? null : event.target.value)}
                         className="min-h-9 rounded-field border border-paper-line bg-paper-raised px-2 text-sm"
                       >
-                        <option value="">Not paid yet</option>
+                        <option value="">{t("notPaidYet")}</option>
                         {people.map((person) => (
                           <option key={person.id} value={person.id}>
-                            Paid by {person.name}
+                            {t("paidByOption", { name: person.name })}
                           </option>
                         ))}
                       </select>
@@ -392,9 +406,11 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                       <Button
                         variant="secondary"
                         onClick={() => setPayment(expense, expense.status === "paid" ? null : people[0]!.id)}
-                        aria-label={`${expense.status === "paid" ? "Mark pending" : "Mark paid"}: ${expense.description}`}
+                        aria-label={t(expense.status === "paid" ? "markPendingLabel" : "markPaidLabel", {
+                          name: expense.description,
+                        })}
                       >
-                        {expense.status === "paid" ? "Mark as pending" : "Mark as paid"}
+                        {expense.status === "paid" ? t("markPending") : t("markPaid")}
                       </Button>
                     </div>
                   )}
@@ -409,15 +425,13 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
         <section aria-labelledby="settle" className="mt-10">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="settle" className="text-xl font-semibold">
-              Settle up
+              {t("settleUp")}
             </h2>
             <Button variant={settleOpen ? "secondary" : "primary"} onClick={() => setSettleOpen((open) => !open)} aria-expanded={settleOpen}>
-              {settleOpen ? "Hide" : "Settle up"}
+              {settleOpen ? t("hide") : t("settleUp")}
             </Button>
           </div>
-          <p className="mt-1 text-sm text-paper-muted">
-            Works out who pays whom, with the fewest transfers, so everyone ends up even.
-          </p>
+          <p className="mt-1 text-sm text-paper-muted">{t("settleHint")}</p>
 
           {settleOpen ? (
             <div className="mt-4" data-testid="settle-panel">
@@ -429,10 +443,8 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                 >
                   {settled ? <Icon name="checkCircle" width={22} height={22} /> : null}
                   <p>
-                    {summary.paidMinor > 0 || settlements.length > 0
-                      ? "Everyone is settled up."
-                      : "Nothing to settle yet. Mark some expenses as paid first."}
-                    {settled ? " Every expense is paid and nobody owes anyone." : ""}
+                    {summary.paidMinor > 0 || settlements.length > 0 ? t("allSettled") : t("nothingToSettle")}
+                    {settled ? ` ${t("everyExpensePaid")}` : ""}
                   </p>
                 </div>
               ) : (
@@ -440,7 +452,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                   {transfers.map((transfer) => (
                     <li key={`${transfer.fromId}-${transfer.toId}`} className="flex items-center gap-3 py-3" data-testid="transfer-row">
                       <p className="min-w-0 flex-1">
-                        <strong>{nameOf(transfer.fromId)}</strong> pays <strong>{nameOf(transfer.toId)}</strong>
+                        {t.rich("pays", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId), strong })}
                       </p>
                       <span className="font-semibold tabular-nums">{formatCop(transfer.amountMinor)}</span>
                       <Button
@@ -456,38 +468,36 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                             }),
                           )
                         }
-                        aria-label={`Mark as paid: ${nameOf(transfer.fromId)} pays ${nameOf(transfer.toId)}`}
+                        aria-label={t("markAsPaidLabel", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId) })}
                       >
-                        Mark as paid
+                        {t("markAsPaid")}
                       </Button>
                     </li>
                   ))}
                 </ul>
               )}
               {pendingCount > 0 ? (
-                <p className="mt-3 text-sm text-paper-muted">
-                  {pendingCount} {pendingCount === 1 ? "expense is" : "expenses are"} still pending and not included.
-                </p>
+                <p className="mt-3 text-sm text-paper-muted">{t("pendingNotIncluded", { count: pendingCount })}</p>
               ) : null}
             </div>
           ) : null}
 
           {settlements.length > 0 ? (
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-paper-muted">Payments made</h3>
+              <h3 className="text-sm font-semibold text-paper-muted">{t("paymentsMade")}</h3>
               <ul className="mt-2 divide-y divide-paper-line border-y border-paper-line">
                 {settlements.map((item) => (
                   <li key={item.id} className="flex items-center gap-3 py-3">
                     <p className="min-w-0 flex-1 truncate">
-                      <strong>{nameOf(item.fromId)}</strong> paid <strong>{nameOf(item.toId)}</strong>
-                      {item.paidOn ? <span className="text-paper-muted"> · {formatTripDay(item.paidOn)}</span> : null}
+                      {t.rich("paidTo", { from: nameOf(item.fromId), to: nameOf(item.toId), strong })}
+                      {item.paidOn ? <span className="text-paper-muted"> · {format.day(item.paidOn)}</span> : null}
                     </p>
                     <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
                     <Button
                       variant="ghost"
                       className="px-2.5 hover:text-clay"
                       onClick={() => run(() => deleteTripSettlement(trip.id, item.id))}
-                      aria-label={`Undo payment from ${nameOf(item.fromId)} to ${nameOf(item.toId)}`}
+                      aria-label={t("undoPayment", { from: nameOf(item.fromId), to: nameOf(item.toId) })}
                     >
                       <Icon name="trash" width={18} height={18} />
                     </Button>
@@ -514,32 +524,34 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
         onClose={() => setEditingTrip(false)}
       />
 
-      <Dialog open={deletingExpense !== null} title="Delete expense" onClose={() => setDeletingExpense(null)}>
+      <Dialog open={deletingExpense !== null} title={t("deleteExpenseTitle")} onClose={() => setDeletingExpense(null)}>
         <p className="text-sm text-paper-muted">
-          Delete <strong className="text-ink">{deletingExpense?.description}</strong> (
-          {deletingExpense ? formatCop(deletingExpense.amountMinor) : ""})? The balances will be recalculated.
+          {t.rich("deleteExpenseConfirm", {
+            name: deletingExpense?.description ?? "",
+            amount: deletingExpense ? formatCop(deletingExpense.amountMinor) : "",
+            strong: strongInk,
+          })}
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setDeletingExpense(null)}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button variant="danger" onClick={confirmDeleteExpense} loading={pending}>
-            Delete expense
+            {t("deleteExpenseAction")}
           </Button>
         </div>
       </Dialog>
 
-      <Dialog open={deletingTrip} title="Delete trip" onClose={() => setDeletingTrip(false)}>
+      <Dialog open={deletingTrip} title={t("deleteTripTitle")} onClose={() => setDeletingTrip(false)}>
         <p className="text-sm text-paper-muted">
-          Delete <strong className="text-ink">{trip.name}</strong> with all its expenses and payments? This cannot be
-          undone.
+          {t.rich("deleteTripConfirm", { name: trip.name, strong: strongInk })}
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setDeletingTrip(false)}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button variant="danger" onClick={confirmDeleteTrip} loading={pending}>
-            Delete trip
+            {t("deleteTripAction")}
           </Button>
         </div>
       </Dialog>

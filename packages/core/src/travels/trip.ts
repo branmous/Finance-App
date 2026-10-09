@@ -1,4 +1,5 @@
 import { isUuid, isValidDate } from "../expenses/expense";
+import { validationError, type ValidationError } from "../validation";
 
 export const TRIP_NAME_MAX_LENGTH = 80;
 export const TRIP_PERSON_NAME_MAX_LENGTH = 40;
@@ -35,26 +36,26 @@ export type TripInput = {
   participants: string[];
 };
 
-export type TripInputErrors = Partial<Record<keyof TripInput, string>>;
+export type TripInputErrors = Partial<Record<keyof TripInput, ValidationError>>;
 
 export type TripValidationResult = { ok: true; value: TripInput } | { ok: false; errors: TripInputErrors };
 
 export type TripDetailsInput = Pick<TripInput, "name" | "startDate" | "endDate">;
 
-type DetailsErrors = Partial<Record<keyof TripDetailsInput, string>>;
+type DetailsErrors = Partial<Record<keyof TripDetailsInput, ValidationError>>;
 
 /** Name and dates, shared by creating a trip and editing one. Failures are written into `errors`. */
 function readTripDetails(raw: Record<string, unknown>, errors: DetailsErrors): TripDetailsInput {
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
-  if (name === "") errors.name = "Enter a name for the trip.";
-  else if (name.length > TRIP_NAME_MAX_LENGTH) errors.name = `Name must be at most ${TRIP_NAME_MAX_LENGTH} characters.`;
+  if (name === "") errors.name = validationError("enterTripName");
+  else if (name.length > TRIP_NAME_MAX_LENGTH) errors.name = validationError("nameTooLong", { max: TRIP_NAME_MAX_LENGTH });
 
   const start = parseOptionalDate(raw.startDate);
   const end = parseOptionalDate(raw.endDate);
-  if (!start.ok) errors.startDate = "Enter a valid start date.";
-  if (!end.ok) errors.endDate = "Enter a valid end date.";
+  if (!start.ok) errors.startDate = validationError("invalidStartDate");
+  if (!end.ok) errors.endDate = validationError("invalidEndDate");
   if (start.ok && end.ok && start.value && end.value && end.value < start.value) {
-    errors.endDate = "The end date cannot be before the start date.";
+    errors.endDate = validationError("endDateBeforeStart");
   }
 
   return { name, startDate: start.ok ? start.value : null, endDate: end.ok ? end.value : null };
@@ -66,7 +67,7 @@ export type TripDetailsValidationResult =
 
 export function validateTripDetailsInput(input: unknown): TripDetailsValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { name: "Trip data is required." } };
+    return { ok: false, errors: { name: validationError("tripDataRequired") } };
   }
   const errors: DetailsErrors = {};
   const value = readTripDetails(input as Record<string, unknown>, errors);
@@ -75,7 +76,7 @@ export function validateTripDetailsInput(input: unknown): TripDetailsValidationR
 
 export function validateTripInput(input: unknown): TripValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { name: "Trip data is required." } };
+    return { ok: false, errors: { name: validationError("tripDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
@@ -84,7 +85,7 @@ export function validateTripInput(input: unknown): TripValidationResult {
   const details = readTripDetails(raw, errors);
 
   if (typeof raw.kind !== "string" || !(TRIP_KINDS as readonly string[]).includes(raw.kind)) {
-    errors.kind = "Choose a trip type.";
+    errors.kind = validationError("chooseTripType");
   }
 
   const participants: string[] = [];
@@ -94,15 +95,15 @@ export function validateTripInput(input: unknown): TripValidationResult {
     }
   }
   if (participants.some((person) => person.length > TRIP_PERSON_NAME_MAX_LENGTH)) {
-    errors.participants = `Each name must be at most ${TRIP_PERSON_NAME_MAX_LENGTH} characters.`;
+    errors.participants = validationError("personNameTooLong", { max: TRIP_PERSON_NAME_MAX_LENGTH });
   } else if (participants.length > TRIP_MAX_PARTICIPANTS) {
-    errors.participants = `A trip can have at most ${TRIP_MAX_PARTICIPANTS} people.`;
+    errors.participants = validationError("tooManyPeople", { max: TRIP_MAX_PARTICIPANTS });
   } else if (new Set(participants.map((person) => person.toLowerCase())).size !== participants.length) {
-    errors.participants = "Each person needs a different name.";
+    errors.participants = validationError("duplicatePeople");
   } else if (raw.kind === "group" && participants.length < 2) {
-    errors.participants = "A group trip needs at least two people.";
+    errors.participants = validationError("groupNeedsTwo");
   } else if (raw.kind === "individual" && participants.length !== 1) {
-    errors.participants = "An individual trip has only you.";
+    errors.participants = validationError("individualOnlyYou");
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -119,13 +120,13 @@ export function validateTripInput(input: unknown): TripValidationResult {
 
 // ---------------------------------------------------------------- person
 
-export type TripPersonResult = { ok: true; value: string } | { ok: false; error: string };
+export type TripPersonResult = { ok: true; value: string } | { ok: false; error: ValidationError };
 
 export function validateTripPersonName(input: unknown): TripPersonResult {
   const name = typeof input === "string" ? input.trim() : "";
-  if (name === "") return { ok: false, error: "Enter a name." };
+  if (name === "") return { ok: false, error: validationError("enterName") };
   if (name.length > TRIP_PERSON_NAME_MAX_LENGTH) {
-    return { ok: false, error: `Name must be at most ${TRIP_PERSON_NAME_MAX_LENGTH} characters.` };
+    return { ok: false, error: validationError("nameTooLong", { max: TRIP_PERSON_NAME_MAX_LENGTH }) };
   }
   return { ok: true, value: name };
 }
@@ -145,7 +146,7 @@ export type TripExpenseInput = {
   shareIds: string[];
 };
 
-export type TripExpenseInputErrors = Partial<Record<keyof TripExpenseInput, string>>;
+export type TripExpenseInputErrors = Partial<Record<keyof TripExpenseInput, ValidationError>>;
 
 export type TripExpenseValidationResult =
   | { ok: true; value: TripExpenseInput }
@@ -153,40 +154,40 @@ export type TripExpenseValidationResult =
 
 export function validateTripExpenseInput(input: unknown): TripExpenseValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { amountMinor: "Expense data is required." } };
+    return { ok: false, errors: { amountMinor: validationError("expenseDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
   const errors: TripExpenseInputErrors = {};
 
   const description = typeof raw.description === "string" ? raw.description.trim() : "";
-  if (description === "") errors.description = "Enter what the expense is.";
+  if (description === "") errors.description = validationError("enterExpenseDescription");
   else if (description.length > TRIP_EXPENSE_DESCRIPTION_MAX_LENGTH) {
-    errors.description = `Description must be at most ${TRIP_EXPENSE_DESCRIPTION_MAX_LENGTH} characters.`;
+    errors.description = validationError("descriptionTooLong", { max: TRIP_EXPENSE_DESCRIPTION_MAX_LENGTH });
   }
 
   if (typeof raw.category !== "string" || !(TRIP_EXPENSE_CATEGORIES as readonly string[]).includes(raw.category)) {
-    errors.category = "Choose a category.";
+    errors.category = validationError("chooseCategory");
   }
 
-  if (!isPositiveAmount(raw.amountMinor)) errors.amountMinor = "Enter an amount greater than zero.";
+  if (!isPositiveAmount(raw.amountMinor)) errors.amountMinor = validationError("amountPositive");
 
   const spent = parseOptionalDate(raw.spentOn);
-  if (!spent.ok) errors.spentOn = "Enter a valid date.";
+  if (!spent.ok) errors.spentOn = validationError("invalidDate");
 
   if (typeof raw.status !== "string" || !(TRIP_EXPENSE_STATUSES as readonly string[]).includes(raw.status)) {
-    errors.status = "Choose pending or paid.";
+    errors.status = validationError("chooseStatus");
   }
 
   let paidById: string | null = null;
   if (raw.status === "paid") {
     if (isUuid(raw.paidById)) paidById = raw.paidById;
-    else errors.paidById = "Choose who paid.";
+    else errors.paidById = validationError("choosePayer");
   }
 
   const shareIds = Array.isArray(raw.shareIds) ? raw.shareIds : [];
   if (shareIds.length === 0 || !shareIds.every(isUuid) || new Set(shareIds).size !== shareIds.length) {
-    errors.shareIds = "Choose at least one person to split this expense.";
+    errors.shareIds = validationError("chooseSharers");
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -214,7 +215,7 @@ export type TripSettlementInput = {
   paidOn: string | null;
 };
 
-export type TripSettlementInputErrors = Partial<Record<keyof TripSettlementInput, string>>;
+export type TripSettlementInputErrors = Partial<Record<keyof TripSettlementInput, ValidationError>>;
 
 export type TripSettlementValidationResult =
   | { ok: true; value: TripSettlementInput }
@@ -222,21 +223,21 @@ export type TripSettlementValidationResult =
 
 export function validateTripSettlementInput(input: unknown): TripSettlementValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { amountMinor: "Payment data is required." } };
+    return { ok: false, errors: { amountMinor: validationError("paymentDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
   const errors: TripSettlementInputErrors = {};
 
-  if (!isUuid(raw.fromId)) errors.fromId = "Choose who paid.";
-  if (!isUuid(raw.toId)) errors.toId = "Choose who received.";
+  if (!isUuid(raw.fromId)) errors.fromId = validationError("choosePayer");
+  if (!isUuid(raw.toId)) errors.toId = validationError("chooseReceiver");
   if (isUuid(raw.fromId) && isUuid(raw.toId) && raw.fromId === raw.toId) {
-    errors.toId = "Choose two different people.";
+    errors.toId = validationError("differentPeople");
   }
-  if (!isPositiveAmount(raw.amountMinor)) errors.amountMinor = "Enter an amount greater than zero.";
+  if (!isPositiveAmount(raw.amountMinor)) errors.amountMinor = validationError("amountPositive");
 
   const paid = parseOptionalDate(raw.paidOn);
-  if (!paid.ok) errors.paidOn = "Enter a valid date.";
+  if (!paid.ok) errors.paidOn = validationError("invalidDate");
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 
