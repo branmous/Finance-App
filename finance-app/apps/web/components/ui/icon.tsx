@@ -3,7 +3,7 @@ import type { SVGProps } from "react";
 
 // 24x24 stroke icons. Category icons are keyed by the closed list in @finance-app/core.
 const PATHS: Record<
-  CategoryIcon | "tags" | "landmark" | "trendingUp" | "check" | "logout" | "plus" | "pencil" | "trash" | "menu" | "close" | "chevronLeft" | "chevronRight",
+  CategoryIcon | "tags" | "landmark" | "trendingUp" | "check" | "logout" | "plus" | "pencil" | "trash" | "menu" | "close" | "chevronLeft" | "chevronRight" | "calendar" | "flag" | "checkCircle",
   string
 > = {
   repeat: "M17 2l4 4-4 4M3 11V9a3 3 0 013-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 01-3 3H3",
@@ -29,6 +29,9 @@ const PATHS: Record<
   close: "M6 6l12 12M18 6L6 18",
   chevronLeft: "M15 5l-7 7 7 7",
   chevronRight: "M9 5l7 7-7 7",
+  calendar: "M5 5h14a1 1 0 011 1v13a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zM4 10h16M8 3v4M16 3v4",
+  flag: "M5 21V4M5 4h11l-2 4 2 4H5",
+  checkCircle: "M12 21a9 9 0 100-18 9 9 0 000 18zM8 12l3 3 5-6",
 };
 
 export type IconName = keyof typeof PATHS;

@@ -30,3 +30,20 @@ export type { DebtRepository, DebtRow, DebtWithProgress } from "./debt-repositor
 export { incomes } from "../schema/incomes";
 export { createIncomeRepository } from "./income-repository";
 export type { IncomeRepository, IncomeRow } from "./income-repository";
+export { tripExpenseShares, tripExpenses, tripParticipants, tripSettlements, trips } from "../schema/travels";
+export {
+  TripParticipantInUseError,
+  TripParticipantNotFoundError,
+  TripParticipantRuleError,
+  createTripRepository,
+} from "./trip-repository";
+export type {
+  TripAccounts,
+  TripDetail,
+  TripExpenseRow,
+  TripListItem,
+  TripParticipantRow,
+  TripRepository,
+  TripRow,
+  TripSettlementRow,
+} from "./trip-repository";
