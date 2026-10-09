@@ -10,8 +10,8 @@
 **/.next/
 **/coverage/
 **/.turbo/
-finance-app/apps/web/playwright-report/
-finance-app/apps/web/test-results/
+apps/web/playwright-report/
+apps/web/test-results/
 .env*.local
 
 # Logs
