@@ -121,7 +121,7 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
           <Button variant="secondary" onClick={() => setDeleting(null)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete} disabled={pending}>
+          <Button variant="danger" onClick={confirmDelete} loading={pending}>
             Delete category
           </Button>
         </div>

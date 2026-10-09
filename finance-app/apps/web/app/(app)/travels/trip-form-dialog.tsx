@@ -148,7 +148,7 @@ function TripForm({ trip, onClose }: Omit<Props, "open">) {
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {trip ? "Save changes" : "Create trip"}
         </Button>
       </div>

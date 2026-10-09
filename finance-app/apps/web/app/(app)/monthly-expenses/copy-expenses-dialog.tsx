@@ -156,7 +156,7 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={submit} disabled={pending || selectedItems.length === 0}>
+        <Button onClick={submit} loading={pending} disabled={selectedItems.length === 0}>
           {selectedItems.length === 0
             ? "Add to this month"
             : `Add ${selectedItems.length} ${selectedItems.length === 1 ? "expense" : "expenses"}`}

@@ -285,7 +285,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                 className="mt-1.5 block min-h-11 w-56 rounded-field border border-paper-line bg-paper-raised px-3 text-base text-ink focus:border-leaf"
               />
             </div>
-            <Button type="submit" variant="secondary" disabled={pending || newPerson.trim() === ""}>
+            <Button type="submit" variant="secondary" loading={pending} disabled={newPerson.trim() === ""}>
               Add person
             </Button>
           </form>
@@ -445,7 +445,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                       <span className="font-semibold tabular-nums">{formatCop(transfer.amountMinor)}</span>
                       <Button
                         variant="secondary"
-                        disabled={pending}
+                        loading={pending}
                         onClick={() =>
                           run(() =>
                             createTripSettlement(trip.id, {
@@ -523,7 +523,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
           <Button variant="secondary" onClick={() => setDeletingExpense(null)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDeleteExpense} disabled={pending}>
+          <Button variant="danger" onClick={confirmDeleteExpense} loading={pending}>
             Delete expense
           </Button>
         </div>
@@ -538,7 +538,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
           <Button variant="secondary" onClick={() => setDeletingTrip(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDeleteTrip} disabled={pending}>
+          <Button variant="danger" onClick={confirmDeleteTrip} loading={pending}>
             Delete trip
           </Button>
         </div>

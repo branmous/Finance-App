@@ -74,7 +74,7 @@ export default function LoginPage() {
               required
             />
 
-            <Button type="submit" disabled={isSubmitting} className="w-full">
+            <Button type="submit" loading={isSubmitting} className="w-full">
               Sign in
             </Button>
           </form>

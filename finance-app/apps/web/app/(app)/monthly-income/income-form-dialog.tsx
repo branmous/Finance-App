@@ -128,7 +128,7 @@ function IncomeForm({ income, defaultPeriod, onClose }: Omit<Props, "open">) {
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {income ? "Save changes" : "Add income"}
         </Button>
       </div>

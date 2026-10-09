@@ -29,10 +29,13 @@ const PENDING_WIDGETS = [
 export default async function DashboardPage() {
   const user = await getSessionUser();
   const period = currentPeriod();
-  const categories = user ? await createCategoryRepository(getDb()).list(user.id) : [];
-  const monthTotal = user ? await createExpenseRepository(getDb()).totalByPeriod(user.id, period) : 0;
-
-  const incomeTotal = user ? await createIncomeRepository(getDb()).totalByPeriod(user.id, period) : 0;
+  const [categories, monthTotal, incomeTotal] = user
+    ? await Promise.all([
+        createCategoryRepository(getDb()).list(user.id),
+        createExpenseRepository(getDb()).totalByPeriod(user.id, period),
+        createIncomeRepository(getDb()).totalByPeriod(user.id, period),
+      ])
+    : [[], 0, 0];
 
   const counts = CATEGORY_TYPES.map((type) => ({
     type,
