@@ -1,5 +1,6 @@
 "use client";
 
+import type { ValidationError } from "@finance-app/core";
 import { formatCop } from "@finance-app/core/expenses";
 import {
   TRIP_EXPENSE_CATEGORIES,
@@ -9,12 +10,13 @@ import {
   type TripExpenseInputErrors,
   type TripExpenseStatus,
 } from "@finance-app/core/travels";
+import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
-import { TRIP_CATEGORY_LABELS } from "@/lib/travel-labels";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { createTripExpense, updateTripExpense } from "../actions";
 import type { TripExpenseItem, TripPerson } from "./types";
@@ -36,15 +38,21 @@ function parseAmount(text: string): number {
 }
 
 export function ExpenseFormDialog({ open, expense, ...rest }: Props) {
+  const t = useTranslations("travels.expenseForm");
   // The inner form is keyed by expense so its state resets every time the dialog opens for another one.
   return (
-    <Dialog open={open} title={expense ? "Edit expense" : "New expense"} onClose={rest.onClose}>
+    <Dialog open={open} title={expense ? t("editTitle") : t("newTitle")} onClose={rest.onClose}>
       <ExpenseForm key={expense?.id ?? "new"} expense={expense} {...rest} />
     </Dialog>
   );
 }
 
 function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, "open">) {
+  const t = useTranslations("travels.expenseForm");
+  const tCategories = useTranslations("travels.categories");
+  const tStatuses = useTranslations("travels.statuses");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   const me = people[0]!;
   const [description, setDescription] = useState(expense?.description ?? "");
   const [category, setCategory] = useState<TripExpenseCategory>(expense?.category ?? "lodging");
@@ -54,7 +62,7 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
   const [paidById, setPaidById] = useState(expense?.paidById ?? me.id);
   const [shareIds, setShareIds] = useState<string[]>(expense?.shareIds ?? people.map((person) => person.id));
   const [errors, setErrors] = useState<TripExpenseInputErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ValidationError | null>(null);
   const [pending, startTransition] = useTransition();
 
   const amountMinor = parseAmount(amount);
@@ -95,12 +103,12 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
     <form onSubmit={handleSubmit} className="space-y-5">
       <Input
         id="trip-expense-description"
-        label="What is it?"
+        label={t("description")}
         value={description}
         onChange={(event) => setDescription(event.target.value)}
         maxLength={TRIP_EXPENSE_DESCRIPTION_MAX_LENGTH + 10}
-        placeholder="Hotel"
-        error={errors.description}
+        placeholder={t("descriptionPlaceholder")}
+        error={message(errors.description)}
         autoFocus
         required
       />
@@ -108,20 +116,20 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
           id="trip-expense-category"
-          label="Category"
+          label={t("category")}
           value={category}
           onChange={(event) => setCategory(event.target.value as TripExpenseCategory)}
-          options={TRIP_EXPENSE_CATEGORIES.map((value) => ({ value, label: TRIP_CATEGORY_LABELS[value] }))}
-          error={errors.category}
+          options={TRIP_EXPENSE_CATEGORIES.map((value) => ({ value, label: tCategories(value) }))}
+          error={message(errors.category)}
         />
         <Input
           id="trip-expense-amount"
-          label="Total amount (COP)"
+          label={t("amount")}
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           inputMode="numeric"
           placeholder="1000000"
-          error={errors.amountMinor}
+          error={message(errors.amountMinor)}
           required
         />
       </div>
@@ -129,39 +137,39 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           id="trip-expense-date"
-          label="Date (optional)"
+          label={t("date")}
           type="date"
           value={spentOn}
           onChange={(event) => setSpentOn(event.target.value)}
-          error={errors.spentOn}
+          error={message(errors.spentOn)}
         />
         <Select
           id="trip-expense-status"
-          label="Status"
+          label={t("status")}
           value={status}
           onChange={(event) => setStatus(event.target.value as TripExpenseStatus)}
           options={[
-            { value: "pending", label: "Pending" },
-            { value: "paid", label: "Paid" },
+            { value: "pending", label: tStatuses("pending") },
+            { value: "paid", label: tStatuses("paid") },
           ]}
-          error={errors.status}
+          error={message(errors.status)}
         />
       </div>
 
       {isGroup && status === "paid" ? (
         <Select
           id="trip-expense-paid-by"
-          label="Who paid?"
+          label={t("whoPaid")}
           value={paidById}
           onChange={(event) => setPaidById(event.target.value)}
           options={people.map((person) => ({ value: person.id, label: person.name }))}
-          error={errors.paidById}
+          error={message(errors.paidById)}
         />
       ) : null}
 
       {isGroup ? (
         <fieldset>
-          <legend className="text-sm font-medium text-ink">Split between</legend>
+          <legend className="text-sm font-medium text-ink">{t("splitBetween")}</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {people.map((person) => {
               const on = shareIds.includes(person.id);
@@ -182,11 +190,14 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
               );
             })}
           </div>
-          {errors.shareIds ? <p className="mt-1.5 text-sm text-clay">{errors.shareIds}</p> : null}
+          {errors.shareIds ? <p className="mt-1.5 text-sm text-clay">{message(errors.shareIds)}</p> : null}
           {perPerson ? (
             <p className="mt-2 text-sm text-paper-muted" data-testid="split-preview">
-              {included.length} {included.length === 1 ? "person pays" : "people pay"} about{" "}
-              <strong className="text-ink">{formatCop(Math.max(...Object.values(perPerson)))}</strong> each.
+              {t.rich("splitPreview", {
+                count: included.length,
+                amount: formatCop(Math.max(...Object.values(perPerson))),
+                strong: (chunks) => <strong className="text-ink">{chunks}</strong>,
+              })}
             </p>
           ) : null}
         </fieldset>
@@ -194,16 +205,16 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
 
       {formError ? (
         <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
-          {formError}
+          {message(formError)}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button type="submit" loading={pending}>
-          {expense ? "Save changes" : "Add expense"}
+          {expense ? t("save") : t("create")}
         </Button>
       </div>
     </form>

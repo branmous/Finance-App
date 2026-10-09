@@ -2,13 +2,13 @@
 
 import { formatCop } from "@finance-app/core/expenses";
 import { computeTripSchedule, type TripKind, type TripPhase, type TripSchedule } from "@finance-app/core/travels";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
-import { TRIP_KIND_LABELS } from "@/lib/travel-labels";
 import { formatTripDates } from "@/lib/trip-dates";
 import { useToday } from "@/lib/use-today";
 
@@ -29,12 +29,7 @@ export type TripListEntry = {
 
 type Filter = "all" | "ongoing" | "upcoming" | "finished";
 
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "ongoing", label: "In progress" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "finished", label: "Finished" },
-];
+const FILTERS: Filter[] = ["all", "ongoing", "upcoming", "finished"];
 
 // What is happening now comes first, then what is coming soonest, then trips with no dates, then the past.
 const PHASE_ORDER: Record<TripPhase, number> = { ongoing: 0, upcoming: 1, undated: 2, finished: 3 };
@@ -51,6 +46,8 @@ function compare(a: Scheduled, b: Scheduled): number {
 }
 
 export function TravelsView({ trips }: { trips: TripListEntry[] }) {
+  const t = useTranslations("travels");
+  const locale = useLocale();
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const today = useToday();
@@ -79,34 +76,34 @@ export function TravelsView({ trips }: { trips: TripListEntry[] }) {
     <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Travels</h1>
-          <p className="mt-1.5 text-paper-muted">Plan your trips, track what they cost and split group expenses.</p>
+          <h1 className="text-3xl font-semibold">{t("title")}</h1>
+          <p className="mt-1.5 text-paper-muted">{t("subtitle")}</p>
         </div>
         <Button onClick={() => setCreating(true)}>
           <Icon name="plus" width={18} height={18} />
-          New trip
+          {t("new")}
         </Button>
       </div>
 
       {trips.length > 0 ? (
-        <div role="group" aria-label="Filter trips" className="mt-6 flex flex-wrap gap-2">
-          {FILTERS.map((item) => {
-            const on = filter === item.value;
+        <div role="group" aria-label={t("filterLabel")} className="mt-6 flex flex-wrap gap-2">
+          {FILTERS.map((value) => {
+            const on = filter === value;
             return (
               <button
-                key={item.value}
+                key={value}
                 type="button"
                 aria-pressed={on}
-                onClick={() => setFilter(item.value)}
+                onClick={() => setFilter(value)}
                 className={`min-h-9 rounded-full border px-3.5 text-sm font-medium transition-colors ${
                   on
                     ? "border-leaf bg-leaf text-white"
                     : "border-paper-line bg-paper-raised text-ink hover:bg-leaf-tint"
                 }`}
               >
-                {item.label}
+                {t(`filters.${value}`)}
                 <span className={`ml-1.5 tabular-nums ${on ? "text-white/80" : "text-paper-muted"}`}>
-                  {counts[item.value]}
+                  {counts[value]}
                 </span>
               </button>
             );
@@ -117,17 +114,17 @@ export function TravelsView({ trips }: { trips: TripListEntry[] }) {
       <div className="mt-6">
         {trips.length === 0 ? (
           <EmptyState
-            title="No trips yet"
-            description="Create a trip to log its flights, hotels and other expenses. Group trips split the costs between everyone going."
-            action={<Button onClick={() => setCreating(true)}>Add a trip</Button>}
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+            action={<Button onClick={() => setCreating(true)}>{t("emptyAction")}</Button>}
           />
         ) : visible.length === 0 ? (
           <EmptyState
-            title="No trips here"
-            description="None of your trips is in this state right now."
+            title={t("noneHereTitle")}
+            description={t("noneHereDescription")}
             action={
               <Button variant="secondary" onClick={() => setFilter("all")}>
-                Show all trips
+                {t("showAll")}
               </Button>
             }
           />
@@ -144,7 +141,7 @@ export function TravelsView({ trips }: { trips: TripListEntry[] }) {
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="truncate text-lg font-semibold">{trip.name}</h2>
                     <span className="shrink-0 rounded-full bg-leaf-tint px-2.5 py-0.5 text-xs font-semibold text-leaf group-hover:bg-paper-raised">
-                      {TRIP_KIND_LABELS[trip.kind]}
+                      {t(`kinds.${trip.kind}`)}
                     </span>
                   </div>
 
@@ -161,8 +158,9 @@ export function TravelsView({ trips }: { trips: TripListEntry[] }) {
                   ) : null}
 
                   <p className="mt-3 text-sm text-paper-muted">
-                    {formatTripDates(trip.startDate, trip.endDate) ?? "No dates yet"}
-                    {trip.kind === "group" ? ` · ${trip.participantCount} people` : ""}
+                    {formatTripDates(trip.startDate, trip.endDate, locale, (key, values) => t(key, values)) ??
+                      t("noDates")}
+                    {trip.kind === "group" ? ` · ${t("peopleCount", { count: trip.participantCount })}` : ""}
                   </p>
 
                   <div className="mt-4 flex items-end justify-between gap-3">

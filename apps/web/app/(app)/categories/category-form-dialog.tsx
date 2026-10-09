@@ -11,13 +11,15 @@ import {
   type CategoryInputErrors,
   type CategoryType,
 } from "@finance-app/core/categories";
+import type { ValidationError } from "@finance-app/core";
+import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
-import { CATEGORY_TYPE_LABELS } from "@/lib/category-labels";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { createCategory, updateCategory } from "./actions";
 
@@ -30,20 +32,6 @@ export type CategoryItem = {
   paymentInfo: string;
 };
 
-const COLOR_NAMES: Record<CategoryColor, string> = {
-  "#0f766e": "Teal",
-  "#2563eb": "Blue",
-  "#7c3aed": "Violet",
-  "#db2777": "Pink",
-  "#dc2626": "Red",
-  "#ea580c": "Orange",
-  "#ca8a04": "Amber",
-  "#16a34a": "Green",
-  "#475569": "Slate",
-};
-
-const TYPE_OPTIONS = CATEGORY_TYPES.map((type) => ({ value: type, label: CATEGORY_TYPE_LABELS[type] }));
-
 type Props = {
   open: boolean;
   /** The category being edited, or null to create a new one. */
@@ -52,23 +40,29 @@ type Props = {
 };
 
 export function CategoryFormDialog({ open, category, onClose }: Props) {
+  const t = useTranslations("categories");
   // The inner form is keyed by category so its state resets every time the dialog opens for another item.
   return (
-    <Dialog open={open} title={category ? "Edit category" : "New category"} onClose={onClose}>
+    <Dialog open={open} title={category ? t("formEditTitle") : t("formNewTitle")} onClose={onClose}>
       <CategoryForm key={category?.id ?? "new"} category={category} onClose={onClose} />
     </Dialog>
   );
 }
 
 function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">) {
+  const t = useTranslations("categories");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   const [name, setName] = useState(category?.name ?? "");
   const [type, setType] = useState<CategoryType>(category?.type ?? "subscription");
   const [color, setColor] = useState<CategoryColor>(category?.color ?? CATEGORY_COLORS[0]);
   const [icon, setIcon] = useState<CategoryIcon>(category?.icon ?? CATEGORY_ICONS[0]);
   const [paymentInfo, setPaymentInfo] = useState(category?.paymentInfo ?? "");
   const [errors, setErrors] = useState<CategoryInputErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ValidationError | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const typeOptions = CATEGORY_TYPES.map((value) => ({ value, label: t(`types.${value}.label`) }));
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,37 +85,37 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
     <form onSubmit={handleSubmit} className="space-y-5">
       <Input
         id="category-name"
-        label="Name"
+        label={t("name")}
         value={name}
         onChange={(event) => setName(event.target.value)}
         maxLength={CATEGORY_NAME_MAX_LENGTH + 10}
-        placeholder="Netflix, Rent, Coffee…"
-        error={errors.name}
+        placeholder={t("namePlaceholder")}
+        error={message(errors.name)}
         autoFocus
         required
       />
 
       <Select
         id="category-type"
-        label="Type"
+        label={t("type")}
         value={type}
         onChange={(event) => setType(event.target.value as CategoryType)}
-        options={TYPE_OPTIONS}
-        error={errors.type}
+        options={typeOptions}
+        error={message(errors.type)}
       />
 
       <Input
         id="category-payment-info"
-        label="Payment link or instructions (optional)"
+        label={t("paymentInfo")}
         value={paymentInfo}
         onChange={(event) => setPaymentInfo(event.target.value)}
         maxLength={CATEGORY_PAYMENT_INFO_MAX_LENGTH + 10}
-        placeholder="https://… or “Pay at the bank, ref 1234”"
-        error={errors.paymentInfo}
+        placeholder={t("paymentInfoPlaceholder")}
+        error={message(errors.paymentInfo)}
       />
 
       <fieldset>
-        <legend className="text-sm font-medium">Color</legend>
+        <legend className="text-sm font-medium">{t("color")}</legend>
         <div className="mt-2 flex flex-wrap gap-2.5">
           {CATEGORY_COLORS.map((value) => (
             <label key={value} className="relative cursor-pointer">
@@ -131,7 +125,7 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
                 value={value}
                 checked={color === value}
                 onChange={() => setColor(value)}
-                aria-label={COLOR_NAMES[value]}
+                aria-label={t(`colors.${value}`)}
                 className="peer sr-only"
               />
               <span
@@ -141,11 +135,11 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
             </label>
           ))}
         </div>
-        {errors.color ? <p className="mt-1.5 text-sm text-clay">{errors.color}</p> : null}
+        {errors.color ? <p className="mt-1.5 text-sm text-clay">{message(errors.color)}</p> : null}
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-medium">Icon</legend>
+        <legend className="text-sm font-medium">{t("icon")}</legend>
         <div className="mt-2 grid grid-cols-6 gap-2">
           {CATEGORY_ICONS.map((value) => (
             <label key={value} className="relative cursor-pointer">
@@ -155,7 +149,7 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
                 value={value}
                 checked={icon === value}
                 onChange={() => setIcon(value)}
-                aria-label={`Icon ${value}`}
+                aria-label={t("iconOption", { name: value })}
                 className="peer sr-only"
               />
               <span
@@ -167,21 +161,21 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
             </label>
           ))}
         </div>
-        {errors.icon ? <p className="mt-1.5 text-sm text-clay">{errors.icon}</p> : null}
+        {errors.icon ? <p className="mt-1.5 text-sm text-clay">{message(errors.icon)}</p> : null}
       </fieldset>
 
       {formError ? (
         <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
-          {formError}
+          {message(formError)}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button type="submit" loading={pending}>
-          {category ? "Save changes" : "Create category"}
+          {category ? t("save") : t("create")}
         </Button>
       </div>
     </form>

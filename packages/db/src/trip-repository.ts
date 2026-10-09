@@ -39,6 +39,7 @@ export type TripDetail = TripAccounts & { trip: TripRow };
 
 /** A person id that does not belong to this trip (or does not exist). */
 export class TripParticipantNotFoundError extends Error {
+  readonly code = "personNotInTrip";
   constructor() {
     super("That person is not part of this trip");
     this.name = "TripParticipantNotFoundError";
@@ -47,6 +48,7 @@ export class TripParticipantNotFoundError extends Error {
 
 /** The person paid an expense or took part in a payment, so removing them would break the accounts. */
 export class TripParticipantInUseError extends Error {
+  readonly code = "personInUse";
   constructor() {
     super("This person paid an expense or took part in a payment, so they cannot be removed");
     this.name = "TripParticipantInUseError";
@@ -55,7 +57,11 @@ export class TripParticipantInUseError extends Error {
 
 /** A trip needs at least one person; an individual trip cannot grow. */
 export class TripParticipantRuleError extends Error {
-  constructor(message: string) {
+  /** Validation code the UI translates (e.g. "groupNeedsTwo"); `message` stays English for logs. */
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
     super(message);
     this.name = "TripParticipantRuleError";
   }
@@ -251,14 +257,14 @@ export function createTripRepository(db: DbClient) {
       const trip = await findTrip(userId, tripId);
       if (!trip) return null;
       if (trip.kind === "individual") {
-        throw new TripParticipantRuleError("An individual trip has only you.");
+        throw new TripParticipantRuleError("individualOnlyYou", "An individual trip has only you.");
       }
       const existing = await db
         .select({ name: tripParticipants.name })
         .from(tripParticipants)
         .where(and(eq(tripParticipants.tripId, tripId), eq(tripParticipants.userId, userId)));
       if (existing.some((row) => row.name.toLowerCase() === name.toLowerCase())) {
-        throw new TripParticipantRuleError("Each person needs a different name.");
+        throw new TripParticipantRuleError("duplicatePeople", "Each person needs a different name.");
       }
       const [row] = await db
         .insert(tripParticipants)
@@ -278,10 +284,10 @@ export function createTripRepository(db: DbClient) {
         .where(and(eq(tripParticipants.tripId, tripId), eq(tripParticipants.userId, userId)));
       if (!people.some((person) => person.id === participantId)) return false;
       if (trip.kind === "group" && people.length <= 2) {
-        throw new TripParticipantRuleError("A group trip needs at least two people.");
+        throw new TripParticipantRuleError("groupNeedsTwo", "A group trip needs at least two people.");
       }
       if (trip.kind === "individual") {
-        throw new TripParticipantRuleError("An individual trip has only you.");
+        throw new TripParticipantRuleError("individualOnlyYou", "An individual trip has only you.");
       }
 
       const [paid] = await db

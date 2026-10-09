@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { getRequestConfig } from "next-intl/server";
 
-import en from "../messages/en.json";
+import { catalogs } from "../messages";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, matchAcceptLanguage, type Locale } from "./config";
 
 /** Cookie first, then the browser language, then English. */
@@ -29,8 +29,6 @@ export default getRequestConfig(async () => {
   const locale = resolveLocale();
   // English is the fallback: a key missing in another language shows the English text, never the raw key.
   const messages =
-    locale === "en"
-      ? en
-      : mergeWithFallback(en, (await import(`../messages/${locale}.json`)).default as Tree);
+    locale === "en" ? catalogs.en : mergeWithFallback(catalogs.en as Tree, catalogs[locale] as Tree);
   return { locale, messages };
 });

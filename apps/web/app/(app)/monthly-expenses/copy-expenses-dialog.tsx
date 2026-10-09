@@ -1,11 +1,14 @@
 "use client";
 
-import { formatCop, formatPeriod } from "@finance-app/core/expenses";
+import { formatCop } from "@finance-app/core/expenses";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
+import { useFormatters } from "@/lib/format";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { copyExpenses } from "./actions";
 import type { ExpenseItem } from "./expense-form-dialog";
@@ -24,14 +27,19 @@ type Props = {
 const fingerprint = (item: ExpenseItem) => `${item.categoryId}|${item.amountMinor}|${item.note}`;
 
 export function CopyExpensesDialog({ open, sourcePeriod, ...rest }: Props) {
+  const t = useTranslations("expenses.copy");
+  const format = useFormatters();
   return (
-    <Dialog open={open} title={`Copy from ${formatPeriod(sourcePeriod)}`} onClose={rest.onClose}>
+    <Dialog open={open} title={t("title", { month: format.month(sourcePeriod) })} onClose={rest.onClose}>
       <CopyForm {...rest} />
     </Dialog>
   );
 }
 
 function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePeriod">) {
+  const t = useTranslations("expenses.copy");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -65,7 +73,7 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
       if (result.ok) {
         onClose();
       } else {
-        setError(result.message);
+        setError(message(result.message) ?? null);
       }
     });
   }
@@ -73,10 +81,10 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
   if (sources.length === 0) {
     return (
       <div>
-        <p className="text-sm text-paper-muted">There are no expenses in the previous month to copy.</p>
+        <p className="text-sm text-paper-muted">{t("none")}</p>
         <div className="mt-6 flex justify-end">
           <Button variant="secondary" onClick={onClose}>
-            Close
+            {tCommon("close")}
           </Button>
         </div>
       </div>
@@ -85,10 +93,7 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
 
   return (
     <div>
-      <p className="text-sm text-paper-muted">
-        Pick the ones to add to this month. They are added as pending, so you can mark them as paid later. An expense
-        paid with another one stays linked only if you pick both.
-      </p>
+      <p className="text-sm text-paper-muted">{t("intro")}</p>
 
       {selectable.length > 0 ? (
         <div className="mt-4 flex gap-4 text-sm font-semibold text-leaf">
@@ -97,10 +102,10 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
             className="underline underline-offset-4"
             onClick={() => setSelected(new Set(selectable.map((item) => item.id)))}
           >
-            Select all
+            {t("selectAll")}
           </button>
           <button type="button" className="underline underline-offset-4" onClick={() => setSelected(new Set())}>
-            Clear
+            {t("clear")}
           </button>
         </div>
       ) : null}
@@ -129,7 +134,7 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
                     <span className="block truncate text-xs text-paper-muted">
                       {item.note}
                       {item.note && added ? " · " : ""}
-                      {added ? "Already added" : ""}
+                      {added ? t("alreadyAdded") : ""}
                     </span>
                   ) : null}
                 </span>
@@ -142,8 +147,8 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
 
       <p className="mt-3 text-sm text-paper-muted" aria-live="polite">
         {selectedItems.length === 0
-          ? "Nothing selected"
-          : `${selectedItems.length} selected · ${formatCop(selectedTotal)}`}
+          ? t("nothingSelected")
+          : t("selected", { count: selectedItems.length, total: formatCop(selectedTotal) })}
       </p>
 
       {error ? (
@@ -154,12 +159,10 @@ function CopyForm({ sources, existing, onClose }: Omit<Props, "open" | "sourcePe
 
       <div className="mt-5 flex justify-end gap-3">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button onClick={submit} loading={pending} disabled={selectedItems.length === 0}>
-          {selectedItems.length === 0
-            ? "Add to this month"
-            : `Add ${selectedItems.length} ${selectedItems.length === 1 ? "expense" : "expenses"}`}
+          {selectedItems.length === 0 ? t("addToMonth") : t("addCount", { count: selectedItems.length })}
         </Button>
       </div>
     </div>

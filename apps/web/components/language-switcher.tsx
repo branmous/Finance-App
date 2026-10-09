@@ -15,23 +15,21 @@ export function LanguageSwitcher({ className = "" }: { className?: string }) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <label className={`block ${className}`}>
-      <span className="sr-only">{t("label")}</span>
-      <select
-        value={locale}
-        disabled={pending}
-        onChange={(event) => {
-          const next = event.target.value;
-          startTransition(() => setLocale(next));
-        }}
-        className="min-h-11 w-full rounded-field border border-ink-line bg-transparent px-3 text-sm font-medium text-inherit"
-      >
-        {LOCALES.map((value) => (
-          <option key={value} value={value} className="text-black">
-            {LOCALE_NAMES[value]}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      aria-label={t("label")}
+      value={locale}
+      disabled={pending}
+      onChange={(event) => {
+        const next = event.target.value;
+        startTransition(() => setLocale(next));
+      }}
+      className={`block min-h-11 w-full rounded-field border border-ink-line bg-transparent px-3 text-sm font-medium text-inherit ${className}`}
+    >
+      {LOCALES.map((value) => (
+        <option key={value} value={value} className="text-black">
+          {LOCALE_NAMES[value]}
+        </option>
+      ))}
+    </select>
   );
 }

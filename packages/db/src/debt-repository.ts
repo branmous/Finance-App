@@ -26,6 +26,7 @@ export type DebtWithProgress = {
 
 /** The category does not exist or belongs to another user. */
 export class DebtCategoryNotFoundError extends Error {
+  readonly code = "categoryNotFound";
   constructor() {
     super("Category not found");
     this.name = "DebtCategoryNotFoundError";
@@ -34,6 +35,7 @@ export class DebtCategoryNotFoundError extends Error {
 
 /** The month is not one of the debt's installments. */
 export class DebtPeriodOutOfRangeError extends Error {
+  readonly code = "periodOutOfRange";
   constructor() {
     super("That month is outside the debt's installments");
     this.name = "DebtPeriodOutOfRangeError";
@@ -42,6 +44,7 @@ export class DebtPeriodOutOfRangeError extends Error {
 
 /** The new schedule would leave an already paid installment outside the debt. */
 export class DebtRangeError extends Error {
+  readonly code = "paidOutsideRange";
   constructor() {
     super("Some installments are already paid outside this range. Unmark them first.");
     this.name = "DebtRangeError";

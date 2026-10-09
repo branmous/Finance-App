@@ -2,11 +2,14 @@
 
 import type { CategoryColor, CategoryIcon, CategoryType } from "@finance-app/core/categories";
 import { EXPENSE_NOTE_MAX_LENGTH, formatCop, type ExpenseInputErrors } from "@finance-app/core/expenses";
+import type { ValidationError } from "@finance-app/core";
+import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { createExpense, updateExpense } from "./actions";
 
@@ -55,9 +58,10 @@ function parseAmount(text: string): number {
 }
 
 export function ExpenseFormDialog({ open, expense, ...rest }: Props) {
+  const t = useTranslations("expenses");
   // The inner form is keyed by expense so its state resets every time the dialog opens for another item.
   return (
-    <Dialog open={open} title={expense ? "Edit expense" : "New expense"} onClose={rest.onClose}>
+    <Dialog open={open} title={expense ? t("formEditTitle") : t("formNewTitle")} onClose={rest.onClose}>
       <ExpenseForm key={expense?.id ?? "new"} expense={expense} {...rest} />
     </Dialog>
   );
@@ -71,6 +75,9 @@ function ExpenseForm({
   hasChildren,
   onClose,
 }: Omit<Props, "open">) {
+  const t = useTranslations("expenses");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   const [categoryId, setCategoryId] = useState(expense?.categoryId ?? categories[0]?.id ?? "");
   const [amount, setAmount] = useState(expense ? String(expense.amountMinor) : "");
   // New expenses default to "already paid today"; an existing pending one starts unchecked.
@@ -81,7 +88,7 @@ function ExpenseForm({
   // "" = stands on its own.
   const [parentId, setParentId] = useState(expense?.parentId ?? "");
   const [errors, setErrors] = useState<ExpenseInputErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ValidationError | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Only expenses of the month on screen can be picked, so the link always stays within one month.
@@ -97,11 +104,11 @@ function ExpenseForm({
   }
 
   function parentHint(): string {
-    if (hasChildren) return "Other expenses were paid with this one, so it cannot be paid with another.";
-    if (!sameMonth) return "Only expenses from the month you are viewing can be selected.";
-    if (candidates.length === 0) return "There are no other expenses in this month yet.";
-    if (linkedTo) return `Included in ${linkedTo.categoryName}'s amount, so it is not added again to the month total.`;
-    return "Leave empty if it was paid on its own.";
+    if (hasChildren) return t("hintHasChildren");
+    if (!sameMonth) return t("hintOtherMonth");
+    if (candidates.length === 0) return t("hintNoCandidates");
+    if (linkedTo) return t("hintLinked", { name: linkedTo.categoryName });
+    return t("hintStandalone");
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -133,21 +140,21 @@ function ExpenseForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <Select
         id="expense-category"
-        label="Category"
+        label={t("category")}
         value={categoryId}
         onChange={(event) => setCategoryId(event.target.value)}
         options={categories.map((category) => ({ value: category.id, label: category.name }))}
-        error={errors.categoryId}
+        error={message(errors.categoryId)}
       />
 
       <Input
         id="expense-amount"
-        label="Amount paid (COP)"
+        label={t("amount")}
         value={amount}
         onChange={(event) => setAmount(event.target.value)}
         inputMode="numeric"
         placeholder="2000000"
-        error={errors.amountMinor}
+        error={message(errors.amountMinor)}
         autoFocus
         required
       />
@@ -161,22 +168,20 @@ function ExpenseForm({
               onChange={(event) => setPaid(event.target.checked)}
               className="size-5 accent-leaf"
             />
-            Already paid
+            {t("alreadyPaid")}
           </label>
           {paid ? (
             <Input
               id="expense-paid-on"
-              label="Date paid"
+              label={t("datePaid")}
               type="date"
               value={paidOn}
               onChange={(event) => setPaidOn(event.target.value)}
-              error={errors.paidOn}
+              error={message(errors.paidOn)}
               required
             />
           ) : (
-            <p className="text-xs text-paper-muted">
-              Saved as pending: it counts toward the month but is not marked as paid yet.
-            </p>
+            <p className="text-xs text-paper-muted">{t("savedPending")}</p>
           )}
         </div>
       )}
@@ -184,56 +189,56 @@ function ExpenseForm({
       <div>
         <Input
           id="expense-period"
-          label="Counts toward month"
+          label={t("period")}
           type="month"
           value={period}
           onChange={(event) => handlePeriodChange(event.target.value)}
-          error={errors.period}
+          error={message(errors.period)}
           required
         />
-        <p className="mt-1.5 text-xs text-paper-muted">The month this expense belongs to, even if you paid it later.</p>
+        <p className="mt-1.5 text-xs text-paper-muted">{t("periodHint")}</p>
       </div>
 
       <div>
         <Select
           id="expense-parent"
-          label="Paid with (optional)"
+          label={t("paidWithLabel")}
           value={linked ? parentId : ""}
           onChange={(event) => setParentId(event.target.value)}
           disabled={!canLink}
           options={[
-            { value: "", label: "None, it stands on its own" },
+            { value: "", label: t("paidWithNone") },
             ...candidates.map((candidate) => ({
               value: candidate.id,
               label: `${candidate.categoryName} · ${formatCop(candidate.amountMinor)}${candidate.note ? ` · ${candidate.note}` : ""}`,
             })),
           ]}
-          error={errors.parentId}
+          error={message(errors.parentId)}
         />
         <p className="mt-1.5 text-xs text-paper-muted">{parentHint()}</p>
       </div>
 
       <Input
         id="expense-note"
-        label="Note (optional)"
+        label={t("note")}
         value={note}
         onChange={(event) => setNote(event.target.value)}
         maxLength={EXPENSE_NOTE_MAX_LENGTH + 10}
-        error={errors.note}
+        error={message(errors.note)}
       />
 
       {formError ? (
         <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
-          {formError}
+          {message(formError)}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button type="submit" loading={pending}>
-          {expense ? "Save changes" : "Add expense"}
+          {expense ? t("save") : t("create")}
         </Button>
       </div>
     </form>

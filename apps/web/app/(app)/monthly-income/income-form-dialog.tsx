@@ -6,12 +6,14 @@ import {
   type IncomeInputErrors,
   type IncomeType,
 } from "@finance-app/core/incomes";
+import type { ValidationError } from "@finance-app/core";
+import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
-import { INCOME_TYPE_LABELS } from "@/lib/income-labels";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { createIncome, updateIncome } from "./actions";
 
@@ -39,21 +41,25 @@ function parseAmount(text: string): number {
 }
 
 export function IncomeFormDialog({ open, income, ...rest }: Props) {
+  const t = useTranslations("income");
   // The inner form is keyed by income so its state resets every time the dialog opens for another item.
   return (
-    <Dialog open={open} title={income ? "Edit income" : "New income"} onClose={rest.onClose}>
+    <Dialog open={open} title={income ? t("formEditTitle") : t("formNewTitle")} onClose={rest.onClose}>
       <IncomeForm key={income?.id ?? "new"} income={income} {...rest} />
     </Dialog>
   );
 }
 
 function IncomeForm({ income, defaultPeriod, onClose }: Omit<Props, "open">) {
+  const t = useTranslations("income");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   const [type, setType] = useState<IncomeType>(income?.type ?? "payroll");
   const [amount, setAmount] = useState(income ? String(income.amountMinor) : "");
   const [period, setPeriod] = useState(income?.period ?? defaultPeriod);
   const [note, setNote] = useState(income?.note ?? "");
   const [errors, setErrors] = useState<IncomeInputErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ValidationError | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -77,21 +83,21 @@ function IncomeForm({ income, defaultPeriod, onClose }: Omit<Props, "open">) {
     <form onSubmit={handleSubmit} className="space-y-5">
       <Select
         id="income-type"
-        label="Type"
+        label={t("type")}
         value={type}
         onChange={(event) => setType(event.target.value as IncomeType)}
-        options={INCOME_TYPES.map((value) => ({ value, label: INCOME_TYPE_LABELS[value] }))}
-        error={errors.type}
+        options={INCOME_TYPES.map((value) => ({ value, label: t(`types.${value}`) }))}
+        error={message(errors.type)}
       />
 
       <Input
         id="income-amount"
-        label="Amount received (COP)"
+        label={t("amount")}
         value={amount}
         onChange={(event) => setAmount(event.target.value)}
         inputMode="numeric"
         placeholder="3000000"
-        error={errors.amountMinor}
+        error={message(errors.amountMinor)}
         autoFocus
         required
       />
@@ -99,37 +105,37 @@ function IncomeForm({ income, defaultPeriod, onClose }: Omit<Props, "open">) {
       <div>
         <Input
           id="income-period"
-          label="Counts toward month"
+          label={t("period")}
           type="month"
           value={period}
           onChange={(event) => setPeriod(event.target.value)}
-          error={errors.period}
+          error={message(errors.period)}
           required
         />
-        <p className="mt-1.5 text-xs text-paper-muted">The month this income belongs to.</p>
+        <p className="mt-1.5 text-xs text-paper-muted">{t("periodHint")}</p>
       </div>
 
       <Input
         id="income-note"
-        label="Note (optional)"
+        label={t("note")}
         value={note}
         onChange={(event) => setNote(event.target.value)}
         maxLength={INCOME_NOTE_MAX_LENGTH + 10}
-        error={errors.note}
+        error={message(errors.note)}
       />
 
       {formError ? (
         <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
-          {formError}
+          {message(formError)}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button type="submit" loading={pending}>
-          {income ? "Save changes" : "Add income"}
+          {income ? t("save") : t("create")}
         </Button>
       </div>
     </form>

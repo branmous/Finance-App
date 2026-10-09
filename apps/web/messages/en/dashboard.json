@@ -1,0 +1,19 @@
+{
+  "welcome": "Welcome back, {name}",
+  "subtitle": "Here is how your spending is organized.",
+  "yourCategories": "Your categories",
+  "byTypeLabel": "Categories by type",
+  "noCategories": "You have no categories yet. <link>Create your first category</link> to start grouping expenses.",
+  "thisMonth": "This month",
+  "thisMonthHint": "The remaining panels fill in as the app grows.",
+  "incomeIn": "Income in {month}",
+  "incomeHint": "Total of income counted toward this month.",
+  "viewIncome": "View monthly income",
+  "spentIn": "Spent in {month}",
+  "spentHint": "Total of expenses counted toward this month.",
+  "viewExpenses": "View monthly expenses",
+  "pending": {
+    "whereItWent": { "title": "Where it went", "note": "A breakdown by category." },
+    "latest": { "title": "Latest expenses", "note": "Your most recent entries." }
+  }
+}

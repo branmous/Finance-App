@@ -43,8 +43,8 @@ describe("validateTripInput", () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.participants).toBeDefined();
-      expect(result.errors.endDate).toBeDefined();
+      expect(result.errors.participants).toEqual({ code: "duplicatePeople" });
+      expect(result.errors.endDate).toEqual({ code: "endDateBeforeStart" });
     }
     expect(
       validateTripInput({ name: "T", kind: "individual", startDate: "2026-02-31", participants: ["Me"] }).ok,

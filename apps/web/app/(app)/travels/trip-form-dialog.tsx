@@ -1,18 +1,20 @@
 "use client";
 
+import type { ValidationError } from "@finance-app/core";
 import {
   TRIP_KINDS,
   TRIP_NAME_MAX_LENGTH,
   type TripInputErrors,
   type TripKind,
 } from "@finance-app/core/travels";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
-import { TRIP_KIND_LABELS } from "@/lib/travel-labels";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { createTrip, updateTrip } from "./actions";
 
@@ -26,23 +28,30 @@ type Props = {
 };
 
 export function TripFormDialog({ open, trip, onClose }: Props) {
+  const t = useTranslations("travels.form");
   // The inner form is keyed by trip so its state resets every time the dialog opens for another one.
   return (
-    <Dialog open={open} title={trip ? "Edit trip" : "New trip"} onClose={onClose}>
+    <Dialog open={open} title={trip ? t("editTitle") : t("newTitle")} onClose={onClose}>
       <TripForm key={trip?.id ?? "new"} trip={trip} onClose={onClose} />
     </Dialog>
   );
 }
 
 function TripForm({ trip, onClose }: Omit<Props, "open">) {
+  const t = useTranslations("travels.form");
+  const tKinds = useTranslations("travels.kinds");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   const router = useRouter();
+  // The first person is always "me"; the default name follows the language the form was opened in.
+  const meName = t("meName");
   const [name, setName] = useState(trip?.name ?? "");
   const [kind, setKind] = useState<TripKind>("individual");
-  const [people, setPeople] = useState("Me, ");
+  const [people, setPeople] = useState(`${meName}, `);
   const [startDate, setStartDate] = useState(trip?.startDate ?? "");
   const [endDate, setEndDate] = useState(trip?.endDate ?? "");
   const [errors, setErrors] = useState<TripInputErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<ValidationError | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -63,7 +72,7 @@ function TripForm({ trip, onClose }: Omit<Props, "open">) {
         return;
       }
 
-      const participants = kind === "individual" ? ["Me"] : people.split(",");
+      const participants = kind === "individual" ? [meName] : people.split(",");
       const result = await createTrip({ ...details, kind, participants });
       if (result.ok && result.id) {
         onClose();
@@ -79,12 +88,12 @@ function TripForm({ trip, onClose }: Omit<Props, "open">) {
     <form onSubmit={handleSubmit} className="space-y-5">
       <Input
         id="trip-name"
-        label="Trip name"
+        label={t("name")}
         value={name}
         onChange={(event) => setName(event.target.value)}
         maxLength={TRIP_NAME_MAX_LENGTH + 10}
-        placeholder="Punta Cana"
-        error={errors.name}
+        placeholder={t("namePlaceholder")}
+        error={message(errors.name)}
         autoFocus
         required
       />
@@ -93,28 +102,26 @@ function TripForm({ trip, onClose }: Omit<Props, "open">) {
         <>
           <Select
             id="trip-kind"
-            label="Type"
+            label={t("type")}
             value={kind}
             onChange={(event) => setKind(event.target.value as TripKind)}
-            options={TRIP_KINDS.map((value) => ({ value, label: TRIP_KIND_LABELS[value] }))}
-            error={errors.kind}
+            options={TRIP_KINDS.map((value) => ({ value, label: tKinds(value) }))}
+            error={message(errors.kind)}
           />
           {kind === "group" ? (
             <div>
               <Input
                 id="trip-people"
-                label="People going"
+                label={t("people")}
                 value={people}
                 onChange={(event) => setPeople(event.target.value)}
-                placeholder="Me, Ana, Leo"
-                error={errors.participants}
+                placeholder={t("peoplePlaceholder")}
+                error={message(errors.participants)}
               />
-              <p className="mt-1.5 text-xs text-paper-muted">
-                Separate names with commas. The first one is you; you can add more people later.
-              </p>
+              <p className="mt-1.5 text-xs text-paper-muted">{t("peopleHint")}</p>
             </div>
           ) : (
-            <p className="text-sm text-paper-muted">An individual trip is all yours: every expense is counted for you.</p>
+            <p className="text-sm text-paper-muted">{t("individualHint")}</p>
           )}
         </>
       )}
@@ -122,34 +129,34 @@ function TripForm({ trip, onClose }: Omit<Props, "open">) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
           id="trip-start"
-          label="Start date (optional)"
+          label={t("startDate")}
           type="date"
           value={startDate}
           onChange={(event) => setStartDate(event.target.value)}
-          error={errors.startDate}
+          error={message(errors.startDate)}
         />
         <Input
           id="trip-end"
-          label="End date (optional)"
+          label={t("endDate")}
           type="date"
           value={endDate}
           onChange={(event) => setEndDate(event.target.value)}
-          error={errors.endDate}
+          error={message(errors.endDate)}
         />
       </div>
 
       {formError ? (
         <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
-          {formError}
+          {message(formError)}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {tCommon("cancel")}
         </Button>
         <Button type="submit" loading={pending}>
-          {trip ? "Save changes" : "Create trip"}
+          {trip ? t("save") : t("create")}
         </Button>
       </div>
     </form>

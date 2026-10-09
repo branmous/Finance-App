@@ -3,6 +3,10 @@
     "appName": "Finance App",
     "close": "Cerrar",
     "cancel": "Cancelar",
+    "month": "Mes",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "backToThisMonth": "Volver a este mes",
     "loading": "Cargando…",
     "loadingPage": "Cargando página"
   },

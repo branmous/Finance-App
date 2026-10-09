@@ -175,7 +175,8 @@ test("group trip: someone who paid cannot be removed; a new person can be added"
   await addExpense(page, { description: "Taxi", category: "Transport", amount: "60000", status: "Paid", paidBy: "Ana" });
 
   await page.getByRole("button", { name: "Remove Ana" }).click();
-  await expect(page.getByRole("alert")).toContainText("cannot be removed");
+  // Next's route announcer is also an alert, so match the one that carries the message.
+  await expect(page.getByRole("alert").filter({ hasText: "cannot be removed" })).toBeVisible();
 
   await page.getByLabel("Add a person").fill("Sofia");
   await page.getByRole("button", { name: "Add person" }).click();
@@ -227,6 +228,7 @@ test("another user does not see my trip, and the page requires sign in", async (
   expect(response?.status()).toBe(404);
   await page.goto("/");
   await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await signIn(page, OWNER.email);
   await page.goto(tripUrl);

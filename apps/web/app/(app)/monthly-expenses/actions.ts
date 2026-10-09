@@ -1,6 +1,13 @@
 "use server";
 
-import { currentPeriod, isUuid, validateExpenseInput, type ExpenseInputErrors } from "@finance-app/core";
+import {
+  currentPeriod,
+  isUuid,
+  validateExpenseInput,
+  validationError,
+  type ExpenseInputErrors,
+  type ValidationError,
+} from "@finance-app/core";
 import {
   ExpenseCategoryNotFoundError,
   InvalidExpenseParentError,
@@ -8,16 +15,16 @@ import {
 } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
+import { SESSION_EXPIRED } from "@/lib/action-errors";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
 
 export type ExpenseActionResult =
   | { ok: true }
-  | { ok: false; errors?: ExpenseInputErrors; message?: string };
+  | { ok: false; errors?: ExpenseInputErrors; message?: ValidationError };
 
-const SESSION_EXPIRED = "Your session has expired. Sign in again.";
-const NOT_FOUND = "This expense no longer exists.";
-const CATEGORY_NOT_FOUND = "This category no longer exists.";
+const NOT_FOUND = validationError("expenseNotFound");
+const CATEGORY_NOT_FOUND = validationError("categoryNotFound");
 
 function refresh() {
   revalidatePath("/monthly-expenses");
@@ -30,7 +37,7 @@ function toActionError(error: unknown): ExpenseActionResult | null {
     return { ok: false, errors: { categoryId: CATEGORY_NOT_FOUND } };
   }
   if (error instanceof InvalidExpenseParentError) {
-    return { ok: false, errors: { parentId: error.message } };
+    return { ok: false, errors: { parentId: validationError(error.code) } };
   }
   return null;
 }
@@ -84,7 +91,7 @@ export async function unlinkExpense(id: string): Promise<ExpenseActionResult> {
   return { ok: true };
 }
 
-export type CopyExpensesResult = { ok: true; copied: number } | { ok: false; message: string };
+export type CopyExpensesResult = { ok: true; copied: number } | { ok: false; message: ValidationError };
 
 const MAX_COPY_BATCH = 200;
 
@@ -97,7 +104,7 @@ export async function copyExpenses(ids: unknown): Promise<CopyExpensesResult> {
   if (!user) return { ok: false, message: SESSION_EXPIRED };
 
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > MAX_COPY_BATCH || !ids.every(isUuid)) {
-    return { ok: false, message: "Select at least one expense to copy." };
+    return { ok: false, message: validationError("selectExpensesToCopy") };
   }
 
   const copied = await createExpenseRepository(getDb()).copyToPeriod(user.id, [...new Set(ids)], currentPeriod());

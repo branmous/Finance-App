@@ -1,5 +1,6 @@
 import { currentPeriod, isValidPeriod, type IncomeType } from "@finance-app/core";
 import { createIncomeRepository } from "@finance-app/db";
+import { getTranslations } from "next-intl/server";
 
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -7,7 +8,10 @@ import { getSessionUser } from "@/lib/session";
 import type { IncomeItem } from "./income-form-dialog";
 import { IncomeView } from "./income-view";
 
-export const metadata = { title: "Monthly income · Finance App" };
+export async function generateMetadata() {
+  const t = await getTranslations("income");
+  return { title: t("metaTitle") };
+}
 
 type Props = { searchParams: { period?: string | string[] } };
 

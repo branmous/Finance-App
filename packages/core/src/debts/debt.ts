@@ -1,5 +1,6 @@
 import { isUuid } from "../expenses/expense";
 import { isValidPeriod, shiftPeriod } from "../expenses/period";
+import { validationError, type ValidationError } from "../validation";
 
 export const DEBT_NAME_MAX_LENGTH = 60;
 export const DEBT_NOTE_MAX_LENGTH = 140;
@@ -20,7 +21,7 @@ export type DebtInput = {
   note: string;
 };
 
-export type DebtInputErrors = Partial<Record<keyof DebtInput | "endPeriod", string>>;
+export type DebtInputErrors = Partial<Record<keyof DebtInput | "endPeriod", ValidationError>>;
 
 export type DebtValidationResult =
   | { ok: true; value: DebtInput }
@@ -34,49 +35,49 @@ export function monthsBetween(start: string, end: string): number {
 
 export function validateDebtInput(input: unknown): DebtValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { name: "Debt data is required." } };
+    return { ok: false, errors: { name: validationError("debtDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
   const errors: DebtInputErrors = {};
 
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
-  if (name.length === 0) errors.name = "Enter a name.";
-  else if (name.length > DEBT_NAME_MAX_LENGTH) errors.name = `Name must be at most ${DEBT_NAME_MAX_LENGTH} characters.`;
+  if (name.length === 0) errors.name = validationError("enterName");
+  else if (name.length > DEBT_NAME_MAX_LENGTH) errors.name = validationError("nameTooLong", { max: DEBT_NAME_MAX_LENGTH });
 
-  if (!isUuid(raw.categoryId)) errors.categoryId = "Choose a category.";
+  if (!isUuid(raw.categoryId)) errors.categoryId = validationError("chooseCategory");
 
   if (
     typeof raw.installmentMinor !== "number" ||
     !Number.isSafeInteger(raw.installmentMinor) ||
     raw.installmentMinor <= 0
   ) {
-    errors.installmentMinor = "Enter an amount greater than zero.";
+    errors.installmentMinor = validationError("amountPositive");
   }
 
   const startOk = isValidPeriod(raw.startPeriod);
   const endOk = isValidPeriod(raw.endPeriod);
-  if (!startOk) errors.startPeriod = "Choose a valid start month.";
-  if (!endOk) errors.endPeriod = "Choose a valid end month.";
+  if (!startOk) errors.startPeriod = validationError("invalidStartMonth");
+  if (!endOk) errors.endPeriod = validationError("invalidEndMonth");
 
   let total = 0;
   if (startOk && endOk) {
     total = monthsBetween(raw.startPeriod as string, raw.endPeriod as string);
-    if (total === 0) errors.endPeriod = "The end month cannot be before the start month.";
+    if (total === 0) errors.endPeriod = validationError("endMonthBeforeStart");
     else if (total > DEBT_MAX_INSTALLMENTS) {
-      errors.endPeriod = `A debt can have at most ${DEBT_MAX_INSTALLMENTS} installments.`;
+      errors.endPeriod = validationError("tooManyInstallments", { max: DEBT_MAX_INSTALLMENTS });
     }
   }
 
   const alreadyPaid = raw.alreadyPaid == null ? 0 : raw.alreadyPaid;
   if (typeof alreadyPaid !== "number" || !Number.isInteger(alreadyPaid) || alreadyPaid < 0) {
-    errors.alreadyPaid = "Enter how many installments are already paid.";
+    errors.alreadyPaid = validationError("invalidAlreadyPaid");
   } else if (total > 0 && alreadyPaid > total) {
-    errors.alreadyPaid = "Paid installments cannot exceed the total.";
+    errors.alreadyPaid = validationError("paidExceedsTotal");
   }
 
   const note = typeof raw.note === "string" ? raw.note.trim() : "";
-  if (note.length > DEBT_NOTE_MAX_LENGTH) errors.note = `Note must be at most ${DEBT_NOTE_MAX_LENGTH} characters.`;
+  if (note.length > DEBT_NOTE_MAX_LENGTH) errors.note = validationError("noteTooLong", { max: DEBT_NOTE_MAX_LENGTH });
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
 

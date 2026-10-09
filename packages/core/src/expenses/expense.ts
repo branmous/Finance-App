@@ -1,3 +1,4 @@
+import { validationError, type ValidationError } from "../validation";
 import { isValidPeriod } from "./period";
 
 export const EXPENSE_NOTE_MAX_LENGTH = 140;
@@ -21,7 +22,7 @@ export type ExpenseInput = {
   parentId: string | null;
 };
 
-export type ExpenseInputErrors = Partial<Record<keyof ExpenseInput, string>>;
+export type ExpenseInputErrors = Partial<Record<keyof ExpenseInput, ValidationError>>;
 
 export type ExpenseValidationResult =
   | { ok: true; value: ExpenseInput }
@@ -45,29 +46,29 @@ export function isValidDate(value: unknown): value is string {
 
 export function validateExpenseInput(input: unknown): ExpenseValidationResult {
   if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: { amountMinor: "Expense data is required." } };
+    return { ok: false, errors: { amountMinor: validationError("expenseDataRequired") } };
   }
 
   const raw = input as Record<string, unknown>;
   const errors: ExpenseInputErrors = {};
 
-  if (!isUuid(raw.categoryId)) errors.categoryId = "Choose a category.";
+  if (!isUuid(raw.categoryId)) errors.categoryId = validationError("chooseCategory");
 
   if (typeof raw.amountMinor !== "number" || !Number.isSafeInteger(raw.amountMinor) || raw.amountMinor <= 0) {
-    errors.amountMinor = "Enter an amount greater than zero.";
+    errors.amountMinor = validationError("amountPositive");
   }
 
-  if (!isValidPeriod(raw.period)) errors.period = "Choose a valid month.";
+  if (!isValidPeriod(raw.period)) errors.period = validationError("invalidMonth");
   // No date (or a blank one) means the expense is tracked but not paid yet.
   const blankPaidOn = raw.paidOn == null || (typeof raw.paidOn === "string" && raw.paidOn.trim() === "");
-  if (!blankPaidOn && !isValidDate(raw.paidOn)) errors.paidOn = "Enter a valid payment date.";
+  if (!blankPaidOn && !isValidDate(raw.paidOn)) errors.paidOn = validationError("invalidPaymentDate");
 
   const blankParent = raw.parentId == null || (typeof raw.parentId === "string" && raw.parentId.trim() === "");
-  if (!blankParent && !isUuid(raw.parentId)) errors.parentId = "Choose a valid expense to pay with.";
+  if (!blankParent && !isUuid(raw.parentId)) errors.parentId = validationError("invalidExpenseParent");
 
   const note = typeof raw.note === "string" ? raw.note.trim() : "";
   if (note.length > EXPENSE_NOTE_MAX_LENGTH) {
-    errors.note = `Note must be at most ${EXPENSE_NOTE_MAX_LENGTH} characters.`;
+    errors.note = validationError("noteTooLong", { max: EXPENSE_NOTE_MAX_LENGTH });
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };

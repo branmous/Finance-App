@@ -7,6 +7,7 @@ import {
   type CategoryType,
 } from "@finance-app/core";
 import { createCategoryRepository, createExpenseRepository, createIncomeRepository } from "@finance-app/db";
+import { getTranslations } from "next-intl/server";
 
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -14,7 +15,10 @@ import { getSessionUser } from "@/lib/session";
 import type { CategoryOption, ExpenseItem } from "./expense-form-dialog";
 import { ExpensesView } from "./expenses-view";
 
-export const metadata = { title: "Monthly expenses · Finance App" };
+export async function generateMetadata() {
+  const t = await getTranslations("expenses");
+  return { title: t("metaTitle") };
+}
 
 type Props = { searchParams: { period?: string | string[] } };
 

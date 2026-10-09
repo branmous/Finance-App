@@ -1,7 +1,9 @@
 "use client";
 
 import { debtProgress, installmentPeriods, type DebtProgress, type DebtStatus } from "@finance-app/core/debts";
-import { formatCop, formatPeriod } from "@finance-app/core/expenses";
+import { formatCop } from "@finance-app/core/expenses";
+import type { ValidationError } from "@finance-app/core";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 
@@ -10,6 +12,8 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { intlLocale, useFormatters } from "@/lib/format";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import type { CategoryOption } from "../monthly-expenses/expense-form-dialog";
 import { deleteDebt, markPaidThrough, setInstallmentPaid } from "./actions";
@@ -24,31 +28,36 @@ type Props = {
 
 const STATUS_ORDER: Record<DebtStatus, number> = { overdue: 0, active: 1, upcoming: 2, paid_off: 3 };
 
-function shortMonth(period: string): string {
+function shortMonth(period: string, locale: string): string {
   const [year, month] = period.split("-").map(Number) as [number, number];
-  return new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(
+  return new Intl.DateTimeFormat(intlLocale(locale), { month: "short", timeZone: "UTC" }).format(
     new Date(Date.UTC(year, month - 1, 1)),
   );
 }
 
 function StatusPill({ status, overdue }: { status: DebtStatus; overdue: number }) {
+  const t = useTranslations("debts");
   if (status === "paid_off") {
-    return <span className="rounded-full bg-leaf-tint px-2.5 py-0.5 text-xs font-semibold text-leaf">Paid off</span>;
+    return <span className="rounded-full bg-leaf-tint px-2.5 py-0.5 text-xs font-semibold text-leaf">{t("paidOff")}</span>;
   }
   if (status === "overdue") {
     return (
       <span className="rounded-full bg-clay-tint px-2.5 py-0.5 text-xs font-semibold text-clay">
-        {overdue} due
+        {t("due", { count: overdue })}
       </span>
     );
   }
   if (status === "upcoming") {
-    return <span className="rounded-full bg-saffron-tint px-2.5 py-0.5 text-xs font-semibold text-ink">Not started</span>;
+    return <span className="rounded-full bg-saffron-tint px-2.5 py-0.5 text-xs font-semibold text-ink">{t("notStarted")}</span>;
   }
   return null;
 }
 
 export function DebtsView({ debts, categories, nowPeriod }: Props) {
+  const t = useTranslations("debts");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
+  const format = useFormatters();
   // `undefined` = closed, `null` = creating, an item = editing.
   const [editing, setEditing] = useState<DebtItem | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<DebtItem | null>(null);
@@ -73,7 +82,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
   const monthlyTotal = running.reduce((sum, row) => sum + row.debt.installmentMinor, 0);
   const remainingTotal = rows.reduce((sum, row) => sum + row.progress.remainingMinor, 0);
 
-  async function runWithRollback(debtId: string, next: string[], action: () => Promise<{ ok: boolean; message?: string }>) {
+  async function runWithRollback(debtId: string, next: string[], action: () => Promise<{ ok: boolean; message?: ValidationError }>) {
     setListError(null);
     setOptimistic((current) => ({ ...current, [debtId]: next }));
     const result = await action();
@@ -83,7 +92,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
         void _dropped;
         return rest;
       });
-      setListError(result.message ?? "The payment could not be saved.");
+      setListError(message(result.message) ?? t("saveFailed"));
     }
   }
 
@@ -106,7 +115,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
     startTransition(async () => {
       const result = await deleteDebt(deleting.id);
       if (result.ok) setDeleting(null);
-      else setDeleteError(result.message ?? "The debt could not be deleted.");
+      else setDeleteError(message(result.message) ?? t("deleteFailed"));
     });
   }
 
@@ -114,13 +123,13 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
     <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Debts</h1>
-          <p className="mt-1.5 text-paper-muted">Track what you owe and tick off each month as you pay it.</p>
+          <h1 className="text-3xl font-semibold">{t("title")}</h1>
+          <p className="mt-1.5 text-paper-muted">{t("subtitle")}</p>
         </div>
         {hasCategories ? (
           <Button onClick={() => setEditing(null)}>
             <Icon name="plus" width={18} height={18} />
-            New debt
+            {t("new")}
           </Button>
         ) : null}
       </div>
@@ -128,20 +137,20 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
       {debts.length > 0 ? (
         <section aria-labelledby="debts-summary" className="mt-8 rounded-panel bg-ink p-6 text-paper sm:p-8">
           <h2 id="debts-summary" className="text-sm font-medium text-ink-muted">
-            Still to pay
+            {t("stillToPay")}
           </h2>
           <p className="mt-2 font-display text-5xl font-semibold" data-testid="debts-remaining">
             {formatCop(remainingTotal)}
           </p>
           <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 border-t border-ink-line pt-4 text-sm">
             <div>
-              <dt className="text-ink-muted">Monthly payments</dt>
+              <dt className="text-ink-muted">{t("monthlyPayments")}</dt>
               <dd className="font-semibold tabular-nums" data-testid="debts-monthly">
                 {formatCop(monthlyTotal)}
               </dd>
             </div>
             <div>
-              <dt className="text-ink-muted">Debts in progress</dt>
+              <dt className="text-ink-muted">{t("inProgress")}</dt>
               <dd className="font-semibold tabular-nums">{running.length}</dd>
             </div>
           </dl>
@@ -151,22 +160,22 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
       <div className="mt-8">
         {!hasCategories ? (
           <EmptyState
-            title="Create a category first"
-            description="Each monthly payment is filed under a category, such as Insurance or Loans."
+            title={t("createCategoryFirst")}
+            description={t("createCategoryDescription")}
             action={
               <Link
                 href="/categories"
                 className="inline-flex min-h-11 items-center rounded-field bg-ink px-4 text-sm font-semibold text-white hover:bg-ink-soft"
               >
-                Go to categories
+                {t("goToCategories")}
               </Link>
             }
           />
         ) : debts.length === 0 ? (
           <EmptyState
-            title="No debts yet"
-            description="Add a debt with its monthly payment and dates, then mark each month as you pay it. Paid months also show up in your monthly expenses."
-            action={<Button onClick={() => setEditing(null)}>Add your first debt</Button>}
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+            action={<Button onClick={() => setEditing(null)}>{t("emptyAction")}</Button>}
           />
         ) : (
           <>
@@ -192,28 +201,30 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                         <StatusPill status={progress.status} overdue={progress.overduePeriods.length} />
                       </div>
                       <p className="text-sm text-paper-muted">
-                        {debt.categoryName} · {formatPeriod(debt.startPeriod)} – {formatPeriod(progress.endPeriod)}
+                        {debt.categoryName} · {format.month(debt.startPeriod)} – {format.month(progress.endPeriod)}
                         {debt.note ? ` · ${debt.note}` : ""}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold tabular-nums">{formatCop(debt.installmentMinor)}</p>
-                      <p className="text-xs text-paper-muted">per month</p>
+                      <p className="text-xs text-paper-muted">{t("perMonth")}</p>
                     </div>
                   </div>
 
                   <div className="mt-5">
                     <div className="flex items-baseline justify-between text-sm">
                       <p className="font-medium" data-testid="debt-progress">
-                        {progress.paidCount} of {debt.totalInstallments} paid
+                        {t("paidProgress", { paid: progress.paidCount, total: debt.totalInstallments })}
                       </p>
                       <p className="text-paper-muted tabular-nums">
-                        {progress.remainingCount === 0 ? "Nothing left to pay" : `${formatCop(progress.remainingMinor)} left`}
+                        {progress.remainingCount === 0
+                          ? t("nothingLeft")
+                          : t("amountLeft", { amount: formatCop(progress.remainingMinor) })}
                       </p>
                     </div>
                     <div
                       role="progressbar"
-                      aria-label={`${debt.name} progress`}
+                      aria-label={t("progressLabel", { name: debt.name })}
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={progress.percent}
@@ -226,7 +237,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                     </div>
                   </div>
 
-                  <ul className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8" aria-label={`${debt.name} months`}>
+                  <ul className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8" aria-label={t("monthsLabel", { name: debt.name })}>
                     {installmentPeriods(debt).map((period) => {
                       const paid = paidPeriods.includes(period);
                       const due = !paid && period <= nowPeriod;
@@ -242,13 +253,15 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                             type="button"
                             onClick={() => toggle(debt.id, paidPeriods, period)}
                             aria-pressed={paid}
-                            aria-label={`${formatPeriod(period)}${paid ? ", paid" : due ? ", due" : ", pending"}`}
+                            aria-label={t(paid ? "monthPaid" : due ? "monthDue" : "monthPending", {
+                              month: format.month(period),
+                            })}
                             className={`flex min-h-12 w-full flex-col items-center justify-center rounded-field border text-xs font-semibold transition-colors ${tone} ${
                               current ? "ring-2 ring-saffron ring-offset-1" : ""
                             }`}
                           >
                             {paid ? <Icon name="check" width={14} height={14} /> : null}
-                            <span>{shortMonth(period)}</span>
+                            <span>{shortMonth(period, format.locale)}</span>
                             <span className="font-normal opacity-80">&rsquo;{period.slice(2, 4)}</span>
                           </button>
                         </li>
@@ -262,10 +275,10 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                         <Button
                           variant="secondary"
                           onClick={() => catchUp(debt, paidPeriods, progress)}
-                          aria-label={`Mark all due months of ${debt.name} as paid`}
+                          aria-label={t("markAllDueLabel", { name: debt.name })}
                         >
                           <Icon name="check" width={16} height={16} />
-                          Mark all {progress.overduePeriods.length} due as paid
+                          {t("markAllDue", { count: progress.overduePeriods.length })}
                         </Button>
                       ) : null}
                     </div>
@@ -274,7 +287,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                         variant="ghost"
                         className="px-2.5"
                         onClick={() => setEditing(debt)}
-                        aria-label={`Edit ${debt.name}`}
+                        aria-label={t("edit", { name: debt.name })}
                       >
                         <Icon name="pencil" width={18} height={18} />
                       </Button>
@@ -285,7 +298,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                           setDeleteError(null);
                           setDeleting(debt);
                         }}
-                        aria-label={`Delete ${debt.name}`}
+                        aria-label={t("delete", { name: debt.name })}
                       >
                         <Icon name="trash" width={18} height={18} />
                       </Button>
@@ -305,10 +318,12 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
         onClose={() => setEditing(undefined)}
       />
 
-      <Dialog open={deleting !== null} title="Delete debt" onClose={() => setDeleting(null)}>
+      <Dialog open={deleting !== null} title={t("deleteTitle")} onClose={() => setDeleting(null)}>
         <p className="text-sm text-paper-muted">
-          Delete <strong className="text-ink">{deleting?.name}</strong>? The months you already paid stay in your
-          monthly expenses.
+          {t.rich("deleteConfirm", {
+            name: deleting?.name ?? "",
+            strong: (chunks) => <strong className="text-ink">{chunks}</strong>,
+          })}
         </p>
         {deleteError ? (
           <p role="alert" className="mt-4 rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
@@ -317,10 +332,10 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
         ) : null}
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setDeleting(null)}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button variant="danger" onClick={confirmDelete} loading={pending}>
-            Delete debt
+            {t("deleteAction")}
           </Button>
         </div>
       </Dialog>

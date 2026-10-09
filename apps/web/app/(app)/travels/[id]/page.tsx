@@ -1,5 +1,6 @@
 import type { TripExpenseCategory, TripExpenseStatus, TripKind } from "@finance-app/core";
 import { createTripRepository } from "@finance-app/db";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { getDb } from "@/lib/db";
@@ -7,7 +8,10 @@ import { getSessionUser } from "@/lib/session";
 
 import { TripDetail } from "./trip-detail";
 
-export const metadata = { title: "Trip · Finance App" };
+export async function generateMetadata() {
+  const t = await getTranslations("travels");
+  return { title: t("detailMetaTitle") };
+}
 
 type Props = { params: { id: string } };
 

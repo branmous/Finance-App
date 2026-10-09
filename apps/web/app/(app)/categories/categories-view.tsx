@@ -1,6 +1,7 @@
 "use client";
 
 import { CATEGORY_TYPES } from "@finance-app/core/categories";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
-import { CATEGORY_TYPE_HINTS, CATEGORY_TYPE_LABELS } from "@/lib/category-labels";
+import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { deleteCategory } from "./actions";
 import { CategoryFormDialog, type CategoryItem } from "./category-form-dialog";
@@ -39,6 +40,9 @@ function PaymentInfo({ value }: { value: string }) {
 }
 
 export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
+  const t = useTranslations("categories");
+  const tCommon = useTranslations("common");
+  const message = useValidationMessage();
   // `undefined` = closed, `null` = creating, an item = editing.
   const [editing, setEditing] = useState<CategoryItem | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<CategoryItem | null>(null);
@@ -54,7 +58,7 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
       if (result.ok) {
         setDeleting(null);
       } else {
-        setDeleteError(result.message ?? "The category could not be deleted.");
+        setDeleteError(message(result.message) ?? t("deleteFailed"));
       }
     });
   }
@@ -68,21 +72,21 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
     <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold">Categories</h1>
-          <p className="mt-1.5 text-paper-muted">Group your expenses the way you think about them.</p>
+          <h1 className="text-3xl font-semibold">{t("title")}</h1>
+          <p className="mt-1.5 text-paper-muted">{t("subtitle")}</p>
         </div>
         <Button onClick={() => openEditor(null)}>
           <Icon name="plus" width={18} height={18} />
-          New category
+          {t("new")}
         </Button>
       </div>
 
       <div className="mt-8">
         {groups.length === 0 ? (
           <EmptyState
-            title="No categories yet"
-            description="Create categories such as Netflix, Rent or Coffee, then use them to organize your expenses."
-            action={<Button onClick={() => openEditor(null)}>Create your first category</Button>}
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
+            action={<Button onClick={() => openEditor(null)}>{t("emptyAction")}</Button>}
           />
         ) : (
           <div className="space-y-10">
@@ -90,9 +94,9 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
               <section key={group.type} aria-labelledby={`group-${group.type}`}>
                 <div className="flex flex-wrap items-baseline gap-x-3 border-b border-paper-line pb-2">
                   <h2 id={`group-${group.type}`} className="text-lg font-semibold">
-                    {CATEGORY_TYPE_LABELS[group.type]}
+                    {t(`types.${group.type}.label`)}
                   </h2>
-                  <p className="text-sm text-paper-muted">{CATEGORY_TYPE_HINTS[group.type]}</p>
+                  <p className="text-sm text-paper-muted">{t(`types.${group.type}.hint`)}</p>
                 </div>
                 <ul className="divide-y divide-paper-line">
                   {group.items.map((item) => (
@@ -106,7 +110,7 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
                         variant="ghost"
                         className="px-2.5"
                         onClick={() => openEditor(item)}
-                        aria-label={`Edit ${item.name}`}
+                        aria-label={t("edit", { name: item.name })}
                       >
                         <Icon name="pencil" width={18} height={18} />
                       </Button>
@@ -117,7 +121,7 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
                           setDeleteError(null);
                           setDeleting(item);
                         }}
-                        aria-label={`Delete ${item.name}`}
+                        aria-label={t("delete", { name: item.name })}
                       >
                         <Icon name="trash" width={18} height={18} />
                       </Button>
@@ -136,9 +140,12 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
         onClose={() => setEditing(undefined)}
       />
 
-      <Dialog open={deleting !== null} title="Delete category" onClose={() => setDeleting(null)}>
+      <Dialog open={deleting !== null} title={t("deleteTitle")} onClose={() => setDeleting(null)}>
         <p className="text-sm text-paper-muted">
-          Delete <strong className="text-ink">{deleting?.name}</strong>? This cannot be undone.
+          {t.rich("deleteConfirm", {
+            name: deleting?.name ?? "",
+            strong: (chunks) => <strong className="text-ink">{chunks}</strong>,
+          })}
         </p>
         {deleteError ? (
           <p role="alert" className="mt-4 rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
@@ -147,10 +154,10 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
         ) : null}
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setDeleting(null)}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button variant="danger" onClick={confirmDelete} loading={pending}>
-            Delete category
+            {t("deleteAction")}
           </Button>
         </div>
       </Dialog>

@@ -247,6 +247,7 @@ test("a user never sees another user's expenses", async ({ page }) => {
   await expect(page.getByText(rent)).toHaveCount(0);
   await expect(page.getByTestId("month-total")).not.toContainText("777.000");
   await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await signIn(page, OWNER.email);
   await openMonth(page, MONTHS.privacy);

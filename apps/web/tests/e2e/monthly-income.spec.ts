@@ -104,6 +104,7 @@ test("another user does not see my incomes", async ({ page }) => {
   await expect(page.getByText(`private ${runId}`)).toHaveCount(0);
   await expect(page.getByTestId("month-total")).not.toContainText("1.234.567");
   await page.getByRole("button", { name: "Log out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
 
   await signIn(page, OWNER.email);
   await openMonth(page, MONTHS.privacy);

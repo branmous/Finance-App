@@ -1,5 +1,6 @@
 import type { TripKind } from "@finance-app/core";
 import { createTripRepository } from "@finance-app/db";
+import { getTranslations } from "next-intl/server";
 
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -7,7 +8,10 @@ import { getSessionUser } from "@/lib/session";
 import type { TripListEntry } from "./travels-view";
 import { TravelsView } from "./travels-view";
 
-export const metadata = { title: "Travels · Finance App" };
+export async function generateMetadata() {
+  const t = await getTranslations("travels");
+  return { title: t("metaTitle") };
+}
 
 export default async function TravelsPage() {
   const user = await getSessionUser();

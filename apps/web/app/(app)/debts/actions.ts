@@ -1,6 +1,13 @@
 "use server";
 
-import { isUuid, isValidPeriod, validateDebtInput, type DebtInputErrors } from "@finance-app/core";
+import {
+  isUuid,
+  isValidPeriod,
+  validateDebtInput,
+  validationError,
+  type DebtInputErrors,
+  type ValidationError,
+} from "@finance-app/core";
 import {
   DebtCategoryNotFoundError,
   DebtPeriodOutOfRangeError,
@@ -9,13 +16,13 @@ import {
 } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
+import { SESSION_EXPIRED } from "@/lib/action-errors";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
 
-export type DebtActionResult = { ok: true } | { ok: false; errors?: DebtInputErrors; message?: string };
+export type DebtActionResult = { ok: true } | { ok: false; errors?: DebtInputErrors; message?: ValidationError };
 
-const SESSION_EXPIRED = "Your session has expired. Sign in again.";
-const NOT_FOUND = "This debt no longer exists.";
+const NOT_FOUND = validationError("debtNotFound");
 
 function refresh() {
   revalidatePath("/debts");
@@ -34,10 +41,10 @@ function todayLocal(): string {
 /** Turns the repository's expected failures into form errors; anything else is a real bug and rethrown. */
 function toActionError(error: unknown): DebtActionResult | null {
   if (error instanceof DebtCategoryNotFoundError) {
-    return { ok: false, errors: { categoryId: "This category no longer exists." } };
+    return { ok: false, errors: { categoryId: validationError(error.code) } };
   }
-  if (error instanceof DebtRangeError) return { ok: false, errors: { endPeriod: error.message } };
-  if (error instanceof DebtPeriodOutOfRangeError) return { ok: false, message: error.message };
+  if (error instanceof DebtRangeError) return { ok: false, errors: { endPeriod: validationError(error.code) } };
+  if (error instanceof DebtPeriodOutOfRangeError) return { ok: false, message: validationError(error.code) };
   return null;
 }
 

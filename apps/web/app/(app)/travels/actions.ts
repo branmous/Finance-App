@@ -7,9 +7,11 @@ import {
   validateTripPersonName,
   validateTripSettlementInput,
   isUuid,
+  validationError,
   type TripExpenseInputErrors,
   type TripInputErrors,
   type TripSettlementInputErrors,
+  type ValidationError,
 } from "@finance-app/core";
 import {
   TripParticipantInUseError,
@@ -19,27 +21,27 @@ import {
 } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
 
+import { SESSION_EXPIRED } from "@/lib/action-errors";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
 
 export type TripActionResult =
   | { ok: true; id?: string }
-  | { ok: false; errors?: TripInputErrors; message?: string };
+  | { ok: false; errors?: TripInputErrors; message?: ValidationError };
 
 export type TripExpenseActionResult =
   | { ok: true }
-  | { ok: false; errors?: TripExpenseInputErrors; message?: string };
+  | { ok: false; errors?: TripExpenseInputErrors; message?: ValidationError };
 
 export type TripSettlementActionResult =
   | { ok: true }
-  | { ok: false; errors?: TripSettlementInputErrors; message?: string };
+  | { ok: false; errors?: TripSettlementInputErrors; message?: ValidationError };
 
-type SimpleResult = { ok: true } | { ok: false; message: string };
+type SimpleResult = { ok: true } | { ok: false; message: ValidationError };
 
-const SESSION_EXPIRED = "Your session has expired. Sign in again.";
-const NOT_FOUND = "This trip no longer exists.";
-const EXPENSE_NOT_FOUND = "This expense no longer exists.";
-const PERSON_NOT_FOUND = "Choose people who are part of this trip.";
+const NOT_FOUND = validationError("tripNotFound");
+const EXPENSE_NOT_FOUND = validationError("expenseNotFound");
+const PERSON_NOT_FOUND = validationError("personNotInTrip");
 
 function refresh(tripId?: string) {
   revalidatePath("/travels");
@@ -47,9 +49,11 @@ function refresh(tripId?: string) {
 }
 
 /** Maps the repository's expected failures to a message; anything else is a real bug and is rethrown. */
-function personMessage(error: unknown): string {
+function personMessage(error: unknown): ValidationError {
   if (error instanceof TripParticipantNotFoundError) return PERSON_NOT_FOUND;
-  if (error instanceof TripParticipantInUseError || error instanceof TripParticipantRuleError) return error.message;
+  if (error instanceof TripParticipantInUseError || error instanceof TripParticipantRuleError) {
+    return validationError(error.code);
+  }
   throw error;
 }
 
@@ -183,7 +187,7 @@ export async function setTripExpenseShares(
   if (!user) return { ok: false, message: SESSION_EXPIRED };
 
   if (!Array.isArray(shareIds) || shareIds.length === 0 || !shareIds.every(isUuid)) {
-    return { ok: false, message: "Choose at least one person to split this expense." };
+    return { ok: false, message: validationError("chooseSharers") };
   }
 
   try {
@@ -205,7 +209,7 @@ export async function setTripExpensePayment(
   const user = await getSessionUser();
   if (!user) return { ok: false, message: SESSION_EXPIRED };
 
-  if (paidById !== null && !isUuid(paidById)) return { ok: false, message: "Choose who paid." };
+  if (paidById !== null && !isUuid(paidById)) return { ok: false, message: validationError("choosePayer") };
 
   try {
     const done = await createTripRepository(getDb()).setExpensePayment(user.id, expenseId, {
@@ -244,7 +248,7 @@ export async function deleteTripSettlement(tripId: string, settlementId: string)
   if (!user) return { ok: false, message: SESSION_EXPIRED };
 
   const removed = await createTripRepository(getDb()).removeSettlement(user.id, settlementId);
-  if (!removed) return { ok: false, message: "This payment no longer exists." };
+  if (!removed) return { ok: false, message: validationError("paymentNotFound") };
   refresh(tripId);
   return { ok: true };
 }
