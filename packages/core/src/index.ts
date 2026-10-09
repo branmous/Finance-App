@@ -15,6 +15,7 @@ export {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
   CATEGORY_NAME_MAX_LENGTH,
+  CATEGORY_PAYMENT_INFO_MAX_LENGTH,
   CATEGORY_TYPES,
   validateCategoryInput,
 } from "./categories/category";

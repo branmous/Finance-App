@@ -16,6 +16,8 @@ export const categories = pgTable(
     type: varchar("type", { length: 32 }).notNull(),
     color: varchar("color", { length: 7 }).notNull(),
     icon: varchar("icon", { length: 32 }).notNull(),
+    // Optional link or free text saying where to pay; empty string when not set.
+    paymentInfo: varchar("payment_info", { length: 500 }).notNull().default(""),
   },
   (table) => ({
     userNameUnique: uniqueIndex("categories_user_id_lower_name_unique").on(

@@ -4,6 +4,7 @@ import {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
   CATEGORY_NAME_MAX_LENGTH,
+  CATEGORY_PAYMENT_INFO_MAX_LENGTH,
   CATEGORY_TYPES,
   type CategoryColor,
   type CategoryIcon,
@@ -26,6 +27,7 @@ export type CategoryItem = {
   type: CategoryType;
   color: CategoryColor;
   icon: CategoryIcon;
+  paymentInfo: string;
 };
 
 const COLOR_NAMES: Record<CategoryColor, string> = {
@@ -63,6 +65,7 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
   const [type, setType] = useState<CategoryType>(category?.type ?? "subscription");
   const [color, setColor] = useState<CategoryColor>(category?.color ?? CATEGORY_COLORS[0]);
   const [icon, setIcon] = useState<CategoryIcon>(category?.icon ?? CATEGORY_ICONS[0]);
+  const [paymentInfo, setPaymentInfo] = useState(category?.paymentInfo ?? "");
   const [errors, setErrors] = useState<CategoryInputErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -73,7 +76,7 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
     setFormError(null);
 
     startTransition(async () => {
-      const input = { name, type, color, icon };
+      const input = { name, type, color, icon, paymentInfo };
       const result = category ? await updateCategory(category.id, input) : await createCategory(input);
       if (result.ok) {
         onClose();
@@ -105,6 +108,16 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
         onChange={(event) => setType(event.target.value as CategoryType)}
         options={TYPE_OPTIONS}
         error={errors.type}
+      />
+
+      <Input
+        id="category-payment-info"
+        label="Payment link or instructions (optional)"
+        value={paymentInfo}
+        onChange={(event) => setPaymentInfo(event.target.value)}
+        maxLength={CATEGORY_PAYMENT_INFO_MAX_LENGTH + 10}
+        placeholder="https://… or “Pay at the bank, ref 1234”"
+        error={errors.paymentInfo}
       />
 
       <fieldset>

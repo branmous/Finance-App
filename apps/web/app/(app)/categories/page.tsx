@@ -20,6 +20,7 @@ export default async function CategoriesPage() {
     type: row.type as CategoryType,
     color: row.color as CategoryColor,
     icon: row.icon as CategoryIcon,
+    paymentInfo: row.paymentInfo,
   }));
   return <CategoriesView categories={categories} />;
 }
