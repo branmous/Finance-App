@@ -1,0 +1,36 @@
+{
+  "common": {
+    "appName": "Finance App",
+    "close": "Close",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "loadingPage": "Loading page"
+  },
+  "meta": {
+    "title": "Finance App",
+    "description": "Personal finance app"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "nav": {
+    "main": "Main",
+    "monthlyIncome": "Monthly income",
+    "monthlyExpenses": "Monthly expenses",
+    "debts": "Debts",
+    "travels": "Travels",
+    "categories": "Categories",
+    "logout": "Log out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "auth": {
+    "tagline": "Know where every peso goes.",
+    "description": "Group your spending into categories you define: subscriptions, home, travel, fixed costs and the small purchases that add up.",
+    "signIn": "Sign in",
+    "signInHint": "Use your email or username to continue.",
+    "identifier": "Email or username",
+    "password": "Password",
+    "invalidCredentials": "Invalid email/username or password."
+  }
+}

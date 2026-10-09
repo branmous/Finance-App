@@ -1,29 +1,33 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useState, type ReactNode } from "react";
 
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { Icon } from "@/components/ui/icon";
 
 type AppShellProps = { userName: string; userEmail: string; children: ReactNode };
 
 const NAV_ITEMS = [
-  { href: "/monthly-income", label: "Monthly income", icon: "trendingUp" },
-  { href: "/monthly-expenses", label: "Monthly expenses", icon: "receipt" },
-  { href: "/debts", label: "Debts", icon: "landmark" },
-  { href: "/travels", label: "Travels", icon: "plane" },
-  { href: "/categories", label: "Categories", icon: "tags" },
+  { href: "/monthly-income", labelKey: "monthlyIncome", icon: "trendingUp" },
+  { href: "/monthly-expenses", labelKey: "monthlyExpenses", icon: "receipt" },
+  { href: "/debts", labelKey: "debts", icon: "landmark" },
+  { href: "/travels", labelKey: "travels", icon: "plane" },
+  { href: "/categories", labelKey: "categories", icon: "tags" },
 ] as const;
 
 export function AppShell({ userName, userEmail, children }: AppShellProps) {
+  const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const nav = (
-    <nav aria-label="Main" className="flex flex-1 flex-col">
+    <nav aria-label={t("main")} className="flex flex-1 flex-col">
       <ul className="space-y-1">
         {NAV_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
@@ -38,7 +42,7 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
                 }`}
               >
                 <Icon name={item.icon} className={active ? "text-saffron" : ""} />
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             </li>
           );
@@ -48,13 +52,14 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
       <div className="mt-auto border-t border-ink-line pt-4">
         <p className="truncate px-3 text-sm font-medium text-white">{userName}</p>
         <p className="truncate px-3 text-xs text-ink-muted">{userEmail}</p>
+        <LanguageSwitcher className="mt-3 text-ink-muted" />
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="mt-3 flex min-h-11 w-full items-center gap-3 rounded-field px-3 text-sm font-medium text-ink-muted transition-colors hover:bg-ink-soft hover:text-white"
         >
           <Icon name="logout" />
-          Log out
+          {t("logout")}
         </button>
       </div>
     </nav>
@@ -67,14 +72,14 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
       </Suspense>
       <header className="sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-2.5 text-white lg:hidden">
         <Link href="/" className="font-display text-lg font-semibold">
-          Finance App
+          {tCommon("appName")}
         </Link>
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-label={menuOpen ? t("closeMenu") : t("openMenu")}
           className="rounded-field p-2 hover:bg-ink-soft"
         >
           <Icon name={menuOpen ? "close" : "menu"} />
@@ -90,7 +95,7 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
 
       <aside className="hidden bg-ink p-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
         <Link href="/" className="mb-8 mt-2 px-3 font-display text-xl font-semibold text-white">
-          Finance App
+          {tCommon("appName")}
         </Link>
         {nav}
       </aside>

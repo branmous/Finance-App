@@ -1,0 +1,36 @@
+{
+  "common": {
+    "appName": "Finance App",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "loading": "Cargando…",
+    "loadingPage": "Cargando página"
+  },
+  "meta": {
+    "title": "Finance App",
+    "description": "App de finanzas personales"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "nav": {
+    "main": "Principal",
+    "monthlyIncome": "Ingresos mensuales",
+    "monthlyExpenses": "Gastos mensuales",
+    "debts": "Deudas",
+    "travels": "Viajes",
+    "categories": "Categorías",
+    "logout": "Cerrar sesión",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
+  },
+  "auth": {
+    "tagline": "Sabe a dónde va cada peso.",
+    "description": "Agrupa tus gastos en las categorías que definas: suscripciones, hogar, viajes, costos fijos y las compras pequeñas que se acumulan.",
+    "signIn": "Iniciar sesión",
+    "signInHint": "Usa tu correo o nombre de usuario para continuar.",
+    "identifier": "Correo o nombre de usuario",
+    "password": "Contraseña",
+    "invalidCredentials": "Correo/usuario o contraseña incorrectos."
+  }
+}
