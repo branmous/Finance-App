@@ -37,12 +37,14 @@ export const CATEGORY_ICONS = [
 export type CategoryIcon = (typeof CATEGORY_ICONS)[number];
 
 export const CATEGORY_NAME_MAX_LENGTH = 40;
+export const CATEGORY_PAYMENT_INFO_MAX_LENGTH = 500;
 
 export type CategoryInput = {
   name: string;
   type: CategoryType;
   color: CategoryColor;
   icon: CategoryIcon;
+  paymentInfo: string;
 };
 
 export type CategoryInputErrors = Partial<Record<keyof CategoryInput, string>>;
@@ -74,6 +76,11 @@ export function validateCategoryInput(input: unknown): CategoryValidationResult 
   if (!isOneOf(CATEGORY_COLORS, raw.color)) errors.color = "Choose a valid color.";
   if (!isOneOf(CATEGORY_ICONS, raw.icon)) errors.icon = "Choose a valid icon.";
 
+  const paymentInfo = typeof raw.paymentInfo === "string" ? raw.paymentInfo.trim() : "";
+  if (paymentInfo.length > CATEGORY_PAYMENT_INFO_MAX_LENGTH) {
+    errors.paymentInfo = `Payment info must be at most ${CATEGORY_PAYMENT_INFO_MAX_LENGTH} characters.`;
+  }
+
   if (Object.keys(errors).length > 0) {
     return { ok: false, errors };
   }
@@ -85,6 +92,7 @@ export function validateCategoryInput(input: unknown): CategoryValidationResult 
       type: raw.type as CategoryType,
       color: raw.color as CategoryColor,
       icon: raw.icon as CategoryIcon,
+      paymentInfo,
     },
   };
 }

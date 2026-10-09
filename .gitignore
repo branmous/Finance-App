@@ -32,3 +32,4 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+conection-vercel-neon-prostgress.txt

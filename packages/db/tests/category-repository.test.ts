@@ -4,7 +4,13 @@ import { DuplicateCategoryNameError, createCategoryRepository } from "../src/cat
 import { createUserRepository } from "../src/user-repository";
 import { createTestDb } from "./helpers";
 
-const input = { name: "Netflix", type: "subscription", color: "#0f766e", icon: "repeat" } as const;
+const input = {
+  name: "Netflix",
+  type: "subscription",
+  color: "#0f766e",
+  icon: "repeat",
+  paymentInfo: "https://netflix.com/pay",
+} as const;
 
 async function setup() {
   const db = await createTestDb();

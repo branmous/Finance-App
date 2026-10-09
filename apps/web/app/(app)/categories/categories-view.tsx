@@ -13,6 +13,31 @@ import { CATEGORY_TYPE_HINTS, CATEGORY_TYPE_LABELS } from "@/lib/category-labels
 import { deleteCategory } from "./actions";
 import { CategoryFormDialog, type CategoryItem } from "./category-form-dialog";
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function PaymentInfo({ value }: { value: string }) {
+  if (isHttpUrl(value)) {
+    return (
+      <a
+        href={value}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block truncate text-sm text-leaf underline underline-offset-2"
+      >
+        {value}
+      </a>
+    );
+  }
+  return <span className="block truncate text-sm text-paper-muted">{value}</span>;
+}
+
 export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
   // `undefined` = closed, `null` = creating, an item = editing.
   const [editing, setEditing] = useState<CategoryItem | null | undefined>(undefined);
@@ -73,7 +98,10 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
                   {group.items.map((item) => (
                     <li key={item.id} className="flex items-center gap-4 py-3">
                       <CategoryBadge color={item.color} icon={item.icon} />
-                      <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{item.name}</span>
+                        {item.paymentInfo ? <PaymentInfo value={item.paymentInfo} /> : null}
+                      </div>
                       <Button
                         variant="ghost"
                         className="px-2.5"

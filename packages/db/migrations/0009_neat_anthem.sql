@@ -1,0 +1,1 @@
+ALTER TABLE "categories" ADD COLUMN "payment_info" varchar(500) DEFAULT '' NOT NULL;

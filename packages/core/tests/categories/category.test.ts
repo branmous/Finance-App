@@ -4,6 +4,7 @@ import {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
   CATEGORY_NAME_MAX_LENGTH,
+  CATEGORY_PAYMENT_INFO_MAX_LENGTH,
   CATEGORY_TYPES,
   validateCategoryInput,
 } from "../../src/categories/category";
@@ -13,6 +14,7 @@ const valid = {
   type: CATEGORY_TYPES[0],
   color: CATEGORY_COLORS[0],
   icon: CATEGORY_ICONS[0],
+  paymentInfo: "",
 };
 
 describe("validateCategoryInput", () => {
@@ -40,6 +42,23 @@ describe("validateCategoryInput", () => {
     const result = validateCategoryInput({ ...valid, name: atLimit + "a" });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors.name).toBeDefined();
+  });
+
+  it("treats payment info as optional and trims it", () => {
+    const { name, type, color, icon } = valid;
+    expect(validateCategoryInput({ name, type, color, icon })).toEqual({ ok: true, value: valid });
+
+    const result = validateCategoryInput({ ...valid, paymentInfo: "  https://pay.example.com  " });
+    expect(result).toEqual({ ok: true, value: { ...valid, paymentInfo: "https://pay.example.com" } });
+  });
+
+  it("rejects payment info longer than the maximum", () => {
+    const atLimit = "a".repeat(CATEGORY_PAYMENT_INFO_MAX_LENGTH);
+    expect(validateCategoryInput({ ...valid, paymentInfo: atLimit }).ok).toBe(true);
+
+    const result = validateCategoryInput({ ...valid, paymentInfo: atLimit + "a" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.paymentInfo).toBeDefined();
   });
 
   it("rejects a type, color or icon outside the allowed lists", () => {
