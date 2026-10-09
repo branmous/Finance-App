@@ -109,7 +109,7 @@ export function ExpensesView({
             variant="ghost"
             className="px-2.5 text-xs"
             onClick={() => makeIndependent(item)}
-            disabled={pending}
+            loading={pending}
             aria-label={`Make ${item.categoryName} independent`}
           >
             Make independent
@@ -303,7 +303,7 @@ export function ExpensesView({
           <Button variant="secondary" onClick={() => setDeleting(null)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete} disabled={pending}>
+          <Button variant="danger" onClick={confirmDelete} loading={pending}>
             Delete expense
           </Button>
         </div>

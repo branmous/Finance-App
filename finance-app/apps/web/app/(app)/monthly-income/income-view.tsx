@@ -153,7 +153,7 @@ export function IncomeView({ period, isCurrentPeriod, incomes, total }: Props) {
           <Button variant="secondary" onClick={() => setDeleting(null)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete} disabled={pending}>
+          <Button variant="danger" onClick={confirmDelete} loading={pending}>
             Delete income
           </Button>
         </div>

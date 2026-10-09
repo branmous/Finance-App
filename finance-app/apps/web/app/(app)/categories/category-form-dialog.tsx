@@ -167,7 +167,7 @@ function CategoryForm({ category, onClose }: Pick<Props, "category" | "onClose">
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {category ? "Save changes" : "Create category"}
         </Button>
       </div>

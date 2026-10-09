@@ -199,7 +199,7 @@ function DebtForm({ debt, categories, onClose }: Omit<Props, "open">) {
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {debt ? "Save changes" : "Add debt"}
         </Button>
       </div>

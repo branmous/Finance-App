@@ -202,7 +202,7 @@ function ExpenseForm({ tripId, expense, people, isGroup, onClose }: Omit<Props, 
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" loading={pending}>
           {expense ? "Save changes" : "Add expense"}
         </Button>
       </div>

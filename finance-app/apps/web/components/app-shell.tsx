@@ -3,8 +3,9 @@
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 
+import { NavigationProgress } from "@/components/navigation-progress";
 import { Icon } from "@/components/ui/icon";
 
 type AppShellProps = { userName: string; userEmail: string; children: ReactNode };
@@ -61,6 +62,9 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
       <header className="sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-2.5 text-white lg:hidden">
         <Link href="/" className="font-display text-lg font-semibold">
           Finance App

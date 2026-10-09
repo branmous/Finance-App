@@ -319,7 +319,7 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
           <Button variant="secondary" onClick={() => setDeleting(null)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDelete} disabled={pending}>
+          <Button variant="danger" onClick={confirmDelete} loading={pending}>
             Delete debt
           </Button>
         </div>
