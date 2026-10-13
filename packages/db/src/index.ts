@@ -20,6 +20,7 @@ export {
 } from "./expense-repository";
 export type {
   BulkExpenseRow,
+  CategoryPeriodTotal,
   ExpenseRepository,
   ExpenseRow,
   ExpenseWithCategory,

@@ -420,4 +420,63 @@ describe("expense repository", () => {
       await expect(repo.countByPeriod(alice.id, "2026-08")).resolves.toBe(0);
     });
   });
+
+  describe("aggregates for the dashboard", () => {
+    it("totals a month by category, biggest first, skipping children and other users or months", async () => {
+      const { repo, categories, alice, bob, rent, bobCategory, input } = await setup();
+      const food = await categories.create(alice.id, { name: "Food", type: "household", color: "#0f766e", icon: "home" });
+      const parent = await repo.create(alice.id, { ...input, categoryId: food.id, amountMinor: 900 });
+      await repo.create(alice.id, { ...input, categoryId: rent.id, amountMinor: 700, parentId: parent.id });
+      await repo.create(alice.id, { ...input, categoryId: rent.id, amountMinor: 2000 });
+      await repo.create(alice.id, { ...input, categoryId: rent.id, amountMinor: 500, paidOn: null });
+      await repo.create(alice.id, { ...input, categoryId: rent.id, amountMinor: 99, period: "2026-08" });
+      await repo.create(bob.id, { ...input, categoryId: bobCategory.id, amountMinor: 12345 });
+
+      const rows = await repo.categoryTotalsByPeriod(alice.id, "2026-09");
+
+      expect(rows).toEqual([
+        { categoryId: rent.id, name: "Rent", type: "fixed", color: rent.color, icon: rent.icon, totalMinor: 2500 },
+        { categoryId: food.id, name: "Food", type: "household", color: food.color, icon: food.icon, totalMinor: 900 },
+      ]);
+      await expect(repo.categoryTotalsByPeriod(alice.id, "2026-12")).resolves.toEqual([]);
+    });
+
+    it("totals each month of an inclusive range and leaves out months without data", async () => {
+      const { repo, alice, bob, bobCategory, input } = await setup();
+      await repo.create(alice.id, { ...input, period: "2026-07", amountMinor: 100 });
+      await repo.create(alice.id, { ...input, period: "2026-07", amountMinor: 50 });
+      await repo.create(alice.id, { ...input, period: "2026-09", amountMinor: 300 });
+      await repo.create(alice.id, { ...input, period: "2026-05", amountMinor: 999 });
+      await repo.create(alice.id, { ...input, period: "2026-10", amountMinor: 999 });
+      await repo.create(bob.id, { ...input, categoryId: bobCategory.id, period: "2026-07", amountMinor: 5000 });
+
+      await expect(repo.totalsByPeriodRange(alice.id, "2026-06", "2026-09")).resolves.toEqual([
+        { period: "2026-07", totalMinor: 150 },
+        { period: "2026-09", totalMinor: 300 },
+      ]);
+    });
+
+    it("does not count a child inside the range totals", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, amountMinor: 1000 });
+      await repo.create(alice.id, { ...input, amountMinor: 400, parentId: parent.id });
+
+      await expect(repo.totalsByPeriodRange(alice.id, "2026-09", "2026-09")).resolves.toEqual([
+        { period: "2026-09", totalMinor: 1000 },
+      ]);
+    });
+
+    it("counts only the user's top-level expenses still pending in a month", async () => {
+      const { repo, alice, bob, bobCategory, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, paidOn: null });
+      await repo.create(alice.id, { ...input, paidOn: null, parentId: parent.id });
+      await repo.create(alice.id, { ...input, paidOn: null });
+      await repo.create(alice.id, input);
+      await repo.create(alice.id, { ...input, paidOn: null, period: "2026-10" });
+      await repo.create(bob.id, { ...input, categoryId: bobCategory.id, paidOn: null });
+
+      await expect(repo.countPendingByPeriod(alice.id, "2026-09")).resolves.toBe(2);
+      await expect(repo.countPendingByPeriod(alice.id, "2026-11")).resolves.toBe(0);
+    });
+  });
 });

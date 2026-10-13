@@ -30,6 +30,20 @@ describe("income repository", () => {
     expect(await repo.totalByPeriod(alice.id, "2026-10")).toBe(0);
   });
 
+  it("totals each month of an inclusive range, only the user's, leaving out months without data", async () => {
+    const { repo, alice, bob, input } = await setup();
+    await repo.create(alice.id, { ...input, period: "2026-07", amountMinor: 100 });
+    await repo.create(alice.id, { ...input, period: "2026-07", amountMinor: 50 });
+    await repo.create(alice.id, { ...input, period: "2026-09", amountMinor: 300 });
+    await repo.create(alice.id, { ...input, period: "2026-05", amountMinor: 999 });
+    await repo.create(bob.id, { ...input, period: "2026-07", amountMinor: 5000 });
+
+    expect(await repo.totalsByPeriodRange(alice.id, "2026-06", "2026-09")).toEqual([
+      { period: "2026-07", totalMinor: 150 },
+      { period: "2026-09", totalMinor: 300 },
+    ]);
+  });
+
   it("updates and bumps updatedAt", async () => {
     const { repo, alice, input } = await setup();
     const created = await repo.create(alice.id, input);

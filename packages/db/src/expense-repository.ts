@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { ExpenseInput } from "@finance-app/core";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 
 import { categories } from "../schema/categories";
 import { expenses } from "../schema/expenses";
@@ -26,6 +26,16 @@ export type ExpenseWithCategory = {
 };
 
 export type PeriodSummary = { total: number; paid: number; pending: number };
+
+/** What one category spent in a month; shaped like core's dashboard `CategoryTotal`. */
+export type CategoryPeriodTotal = {
+  categoryId: string;
+  name: string;
+  type: string;
+  color: string;
+  icon: string;
+  totalMinor: number;
+};
 
 /** A validated row of a bulk load; the month is given once for the whole batch. */
 export type BulkExpenseRow = Pick<ExpenseInput, "categoryId" | "amountMinor" | "paidOn" | "note">;
@@ -160,6 +170,63 @@ export function createExpenseRepository(db: DbClient) {
         .from(expenses)
         .where(and(eq(expenses.userId, userId), eq(expenses.period, period), isNull(expenses.parentId)));
       return Number(row?.total ?? 0);
+    },
+
+    /** Top-level spending per category in a month, biggest first; categories without spending are left out. */
+    async categoryTotalsByPeriod(userId: string, period: string): Promise<CategoryPeriodTotal[]> {
+      const rows = await db
+        .select({
+          categoryId: categories.id,
+          name: categories.name,
+          type: categories.type,
+          color: categories.color,
+          icon: categories.icon,
+          total: sql<string>`sum(${expenses.amountMinor})`,
+        })
+        .from(expenses)
+        .innerJoin(categories, eq(expenses.categoryId, categories.id))
+        .where(and(eq(expenses.userId, userId), eq(expenses.period, period), isNull(expenses.parentId)))
+        .groupBy(categories.id, categories.name, categories.type, categories.color, categories.icon)
+        .orderBy(sql`sum(${expenses.amountMinor}) desc`, asc(categories.name));
+      return rows.map(({ total, ...row }) => ({ ...row, totalMinor: Number(total) }));
+    },
+
+    /** Top-level spending per month between `from` and `to` ("YYYY-MM", both included); months without spending are left out. */
+    async totalsByPeriodRange(
+      userId: string,
+      from: string,
+      to: string,
+    ): Promise<{ period: string; totalMinor: number }[]> {
+      const rows = await db
+        .select({ period: expenses.period, total: sql<string>`sum(${expenses.amountMinor})` })
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.userId, userId),
+            gte(expenses.period, from),
+            lte(expenses.period, to),
+            isNull(expenses.parentId),
+          ),
+        )
+        .groupBy(expenses.period)
+        .orderBy(asc(expenses.period));
+      return rows.map((row) => ({ period: row.period, totalMinor: Number(row.total) }));
+    },
+
+    /** Top-level expenses of a month that still have no paid date. */
+    async countPendingByPeriod(userId: string, period: string): Promise<number> {
+      const [row] = await db
+        .select({ count: sql<string>`count(*)` })
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.userId, userId),
+            eq(expenses.period, period),
+            isNull(expenses.parentId),
+            isNull(expenses.paidOn),
+          ),
+        );
+      return Number(row?.count ?? 0);
     },
 
     /** How many expenses (children included) the user has in a month. */

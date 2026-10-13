@@ -1,5 +1,5 @@
 import type { IncomeInput } from "@finance-app/core";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { incomes } from "../schema/incomes";
 import type { DbClient } from "./user-repository";
@@ -23,6 +23,21 @@ export function createIncomeRepository(db: DbClient) {
         .from(incomes)
         .where(and(eq(incomes.userId, userId), eq(incomes.period, period)));
       return Number(row?.total ?? 0);
+    },
+
+    /** Income per month between `from` and `to` ("YYYY-MM", both included); months without income are left out. */
+    async totalsByPeriodRange(
+      userId: string,
+      from: string,
+      to: string,
+    ): Promise<{ period: string; totalMinor: number }[]> {
+      const rows = await db
+        .select({ period: incomes.period, total: sql<string>`sum(${incomes.amountMinor})` })
+        .from(incomes)
+        .where(and(eq(incomes.userId, userId), gte(incomes.period, from), lte(incomes.period, to)))
+        .groupBy(incomes.period)
+        .orderBy(asc(incomes.period));
+      return rows.map((row) => ({ period: row.period, totalMinor: Number(row.total) }));
     },
 
     async create(userId: string, input: IncomeInput): Promise<IncomeRow> {
