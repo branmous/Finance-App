@@ -16,6 +16,7 @@ import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { deleteExpense, unlinkExpense } from "./actions";
 import { BalanceCard } from "./balance-card";
+import { BulkImportDialog } from "./bulk-import-dialog";
 import { CopyExpensesDialog } from "./copy-expenses-dialog";
 import { ExpenseFormDialog, type CategoryOption, type ExpenseItem } from "./expense-form-dialog";
 
@@ -54,6 +55,7 @@ export function ExpensesView({
   // `undefined` = closed, `null` = creating, an item = editing.
   const [editing, setEditing] = useState<ExpenseItem | null | undefined>(undefined);
   const [copying, setCopying] = useState(false);
+  const [bulkImporting, setBulkImporting] = useState(false);
   const [deleting, setDeleting] = useState<ExpenseItem | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -166,6 +168,10 @@ export function ExpensesView({
                 {t("copyFromLast")}
               </Button>
             ) : null}
+            <Button variant="secondary" onClick={() => setBulkImporting(true)}>
+              <Icon name="plus" width={18} height={18} />
+              {t("bulkImport")}
+            </Button>
             <Button onClick={() => setEditing(null)}>
               <Icon name="plus" width={18} height={18} />
               {t("new")}
@@ -288,6 +294,8 @@ export function ExpensesView({
         existing={expenses}
         onClose={() => setCopying(false)}
       />
+
+      <BulkImportDialog open={bulkImporting} defaultPeriod={period} onClose={() => setBulkImporting(false)} />
 
       <Dialog open={deleting !== null} title={t("deleteTitle")} onClose={() => setDeleting(null)}>
         <p className="text-sm text-paper-muted">

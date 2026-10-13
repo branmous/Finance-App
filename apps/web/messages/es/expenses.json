@@ -60,6 +60,32 @@
     "addToMonth": "Agregar a este mes",
     "addCount": "{count, plural, one {Agregar # gasto} other {Agregar # gastos}}"
   },
+  "bulkImport": "Carga masiva",
+  "bulk": {
+    "title": "Carga masiva",
+    "intro": "Descarga la plantilla, escribe los montos del mes y súbela. Las filas sin monto se omiten y cada gasto se agrega por separado (nunca pagado con otro).",
+    "month": "Mes a cargar",
+    "downloadTemplate": "Descargar plantilla",
+    "file": "Archivo CSV",
+    "checking": "Revisando el archivo…",
+    "summary": "{count, plural, one {# gasto} other {# gastos}} · {total}",
+    "ignored": "{count, plural, one {Se omitió # fila sin monto.} other {Se omitieron # filas sin monto.}}",
+    "existing": "{month} ya tiene {count, plural, one {# gasto} other {# gastos}}. Estos se agregan a los existentes; no se reemplaza ni se borra nada.",
+    "errorsTitle": "Corrige estos problemas y sube el archivo de nuevo. No se guardó nada.",
+    "errorWhere": "Línea {line}",
+    "errorWhereColumn": "Línea {line}, {column}",
+    "errorFile": "Archivo",
+    "moreErrors": "…y {count, plural, one {# problema más} other {# problemas más}}.",
+    "column": {
+      "category": "category",
+      "amount": "amount",
+      "paidOn": "paidOn",
+      "note": "note"
+    },
+    "confirm": "{count, plural, one {Agregar # gasto} other {Agregar # gastos}}",
+    "success": "{count, plural, one {Se agregó # gasto a {month}.} other {Se agregaron # gastos a {month}.}}",
+    "viewMonth": "Ver {month}"
+  },
   "balance": {
     "title": "Ingresos vs gastos",
     "noIncome": "No hay ingresos registrados en {month}, así que no hay con qué comparar tus gastos.",

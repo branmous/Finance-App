@@ -60,6 +60,32 @@
     "addToMonth": "Add to this month",
     "addCount": "{count, plural, one {Add # expense} other {Add # expenses}}"
   },
+  "bulkImport": "Bulk upload",
+  "bulk": {
+    "title": "Bulk upload",
+    "intro": "Download the template, fill in the amounts for the month and upload it. Rows without an amount are skipped, and every expense is added on its own (never paid with another one).",
+    "month": "Month to load",
+    "downloadTemplate": "Download template",
+    "file": "CSV file",
+    "checking": "Checking the file…",
+    "summary": "{count, plural, one {# expense} other {# expenses}} · {total}",
+    "ignored": "{count, plural, one {# row without an amount was skipped.} other {# rows without an amount were skipped.}}",
+    "existing": "{month} already has {count, plural, one {# expense} other {# expenses}}. These are added to them; nothing is replaced or deleted.",
+    "errorsTitle": "Fix these problems and upload the file again. Nothing was saved.",
+    "errorWhere": "Line {line}",
+    "errorWhereColumn": "Line {line}, {column}",
+    "errorFile": "File",
+    "moreErrors": "…and {count, plural, one {# more problem} other {# more problems}}.",
+    "column": {
+      "category": "category",
+      "amount": "amount",
+      "paidOn": "paidOn",
+      "note": "note"
+    },
+    "confirm": "{count, plural, one {Add # expense} other {Add # expenses}}",
+    "success": "{count, plural, one {# expense added to {month}.} other {# expenses added to {month}.}}",
+    "viewMonth": "View {month}"
+  },
   "balance": {
     "title": "Income vs spending",
     "noIncome": "No income recorded for {month}, so there is nothing to compare your spending with.",

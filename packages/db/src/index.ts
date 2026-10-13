@@ -18,7 +18,13 @@ export {
   InvalidExpenseParentError,
   createExpenseRepository,
 } from "./expense-repository";
-export type { ExpenseRepository, ExpenseRow, ExpenseWithCategory, PeriodSummary } from "./expense-repository";
+export type {
+  BulkExpenseRow,
+  ExpenseRepository,
+  ExpenseRow,
+  ExpenseWithCategory,
+  PeriodSummary,
+} from "./expense-repository";
 export { debts } from "../schema/debts";
 export {
   DebtCategoryNotFoundError,

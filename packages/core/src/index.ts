@@ -31,6 +31,20 @@ export { EXPENSE_NOTE_MAX_LENGTH, isUuid, validateExpenseInput } from "./expense
 export type { ExpenseInput, ExpenseInputErrors, ExpenseValidationResult } from "./expenses/expense";
 export { currentPeriod, formatCop, formatPeriod, isValidPeriod, shiftPeriod } from "./expenses/period";
 export {
+  BULK_IMPORT_COLUMNS,
+  BULK_IMPORT_MAX_BYTES,
+  BULK_IMPORT_MAX_ROWS,
+  buildTemplateCsv,
+  validateBulkImport,
+} from "./expenses/bulk-import";
+export type {
+  BulkImportCategory,
+  BulkImportColumn,
+  BulkImportError,
+  BulkImportResult,
+  BulkImportRow,
+} from "./expenses/bulk-import";
+export {
   DEBT_MAX_INSTALLMENTS,
   DEBT_NAME_MAX_LENGTH,
   DEBT_NOTE_MAX_LENGTH,

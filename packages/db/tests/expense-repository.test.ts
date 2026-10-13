@@ -362,4 +362,62 @@ describe("expense repository", () => {
     await repo.remove(alice.id, created.id);
     await expect(categories.remove(alice.id, rent.id)).resolves.toBe(true);
   });
+
+  describe("bulk creation", () => {
+    const row = (categoryId: string, amountMinor: number, paidOn: string | null = null, note = "") => ({
+      categoryId,
+      amountMinor,
+      paidOn,
+      note,
+    });
+
+    it("creates every row as an independent expense of the month", async () => {
+      const { repo, alice, rent } = await setup();
+
+      const created = await repo.createMany(alice.id, "2026-06", [
+        row(rent.id, 100, "2026-06-02"),
+        row(rent.id, 250, null, "second"),
+      ]);
+
+      expect(created).toBe(2);
+      const listed = await repo.listByPeriod(alice.id, "2026-06");
+      expect(listed).toHaveLength(2);
+      expect(listed.every((item) => item.parentId === null && item.currency === "COP")).toBe(true);
+      await expect(repo.summaryByPeriod(alice.id, "2026-06")).resolves.toEqual({ total: 350, paid: 100, pending: 250 });
+    });
+
+    it("adds to a month that already has expenses without touching them", async () => {
+      const { repo, alice, rent, input } = await setup();
+      await repo.create(alice.id, { ...input, period: "2026-06" });
+
+      await repo.createMany(alice.id, "2026-06", [row(rent.id, 5)]);
+
+      await expect(repo.listByPeriod(alice.id, "2026-06")).resolves.toHaveLength(2);
+    });
+
+    it("does nothing for an empty list", async () => {
+      const { repo, alice } = await setup();
+      await expect(repo.createMany(alice.id, "2026-06", [])).resolves.toBe(0);
+    });
+
+    it("saves nothing when one category belongs to another user", async () => {
+      const { repo, alice, rent, bobCategory } = await setup();
+
+      await expect(
+        repo.createMany(alice.id, "2026-06", [row(rent.id, 100), row(bobCategory.id, 200)]),
+      ).rejects.toBeInstanceOf(ExpenseCategoryNotFoundError);
+
+      await expect(repo.countByPeriod(alice.id, "2026-06")).resolves.toBe(0);
+    });
+
+    it("counts only the expenses of the user in that month", async () => {
+      const { repo, alice, bob, bobCategory, input } = await setup();
+      await repo.create(alice.id, { ...input, period: "2026-06" });
+      await repo.create(alice.id, { ...input, period: "2026-07" });
+      await repo.create(bob.id, { ...input, categoryId: bobCategory.id, period: "2026-06" });
+
+      await expect(repo.countByPeriod(alice.id, "2026-06")).resolves.toBe(1);
+      await expect(repo.countByPeriod(alice.id, "2026-08")).resolves.toBe(0);
+    });
+  });
 });

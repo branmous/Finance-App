@@ -1,16 +1,22 @@
 "use server";
 
 import {
+  BULK_IMPORT_MAX_BYTES,
   currentPeriod,
   isUuid,
+  isValidPeriod,
+  validateBulkImport,
   validateExpenseInput,
   validationError,
+  type BulkImportError,
+  type BulkImportRow,
   type ExpenseInputErrors,
   type ValidationError,
 } from "@finance-app/core";
 import {
   ExpenseCategoryNotFoundError,
   InvalidExpenseParentError,
+  createCategoryRepository,
   createExpenseRepository,
 } from "@finance-app/db";
 import { revalidatePath } from "next/cache";
@@ -111,6 +117,65 @@ export async function copyExpenses(ids: unknown): Promise<CopyExpensesResult> {
   if (copied === 0) return { ok: false, message: NOT_FOUND };
   refresh();
   return { ok: true, copied };
+}
+
+export type BulkPreviewResult =
+  | { ok: true; count: number; total: number; ignored: number; existingInPeriod: number }
+  | { ok: false; errors?: BulkImportError[]; message?: ValidationError };
+
+export type BulkImportActionResult =
+  | { ok: true; created: number }
+  | { ok: false; errors?: BulkImportError[]; message?: ValidationError };
+
+type ParsedUpload =
+  | { ok: true; userId: string; period: string; rows: BulkImportRow[]; total: number; ignored: number }
+  | { ok: false; errors?: BulkImportError[]; message?: ValidationError };
+
+/**
+ * Reads and validates the uploaded file for both the preview and the final import, so the import
+ * never trusts what the client saw in the preview.
+ */
+async function readUpload(formData: FormData): Promise<ParsedUpload> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+
+  const period = formData.get("period");
+  if (!isValidPeriod(period)) return { ok: false, message: validationError("invalidMonth") };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, message: validationError("csvChooseFile") };
+  if (file.size > BULK_IMPORT_MAX_BYTES) {
+    return { ok: false, message: validationError("csvTooLarge", { maxMb: BULK_IMPORT_MAX_BYTES / 1_048_576 }) };
+  }
+
+  const categories = await createCategoryRepository(getDb()).list(user.id);
+  const result = validateBulkImport({ text: await file.text(), period, categories });
+  if (!result.ok) return { ok: false, errors: result.errors };
+  return { ok: true, userId: user.id, period, rows: result.rows, total: result.total, ignored: result.ignored };
+}
+
+/** Checks the file and summarizes what would be added; saves nothing. */
+export async function previewBulkExpenses(formData: FormData): Promise<BulkPreviewResult> {
+  const upload = await readUpload(formData);
+  if (!upload.ok) return upload;
+
+  const existingInPeriod = await createExpenseRepository(getDb()).countByPeriod(upload.userId, upload.period);
+  return { ok: true, count: upload.rows.length, total: upload.total, ignored: upload.ignored, existingInPeriod };
+}
+
+/** Adds every expense of the file to the chosen month, or none when anything is wrong. */
+export async function importBulkExpenses(formData: FormData): Promise<BulkImportActionResult> {
+  const upload = await readUpload(formData);
+  if (!upload.ok) return upload;
+
+  try {
+    const created = await createExpenseRepository(getDb()).createMany(upload.userId, upload.period, upload.rows);
+    refresh();
+    return { ok: true, created };
+  } catch (error) {
+    if (error instanceof ExpenseCategoryNotFoundError) return { ok: false, message: CATEGORY_NOT_FOUND };
+    throw error;
+  }
 }
 
 export async function deleteExpense(id: string): Promise<ExpenseActionResult> {

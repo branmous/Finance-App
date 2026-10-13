@@ -27,6 +27,9 @@ export type ExpenseWithCategory = {
 
 export type PeriodSummary = { total: number; paid: number; pending: number };
 
+/** A validated row of a bulk load; the month is given once for the whole batch. */
+export type BulkExpenseRow = Pick<ExpenseInput, "categoryId" | "amountMinor" | "paidOn" | "note">;
+
 /** The category does not exist or belongs to another user. */
 export class ExpenseCategoryNotFoundError extends Error {
   readonly code = "categoryNotFound";
@@ -157,6 +160,45 @@ export function createExpenseRepository(db: DbClient) {
         .from(expenses)
         .where(and(eq(expenses.userId, userId), eq(expenses.period, period), isNull(expenses.parentId)));
       return Number(row?.total ?? 0);
+    },
+
+    /** How many expenses (children included) the user has in a month. */
+    async countByPeriod(userId: string, period: string): Promise<number> {
+      const [row] = await db
+        .select({ count: sql<string>`count(*)` })
+        .from(expenses)
+        .where(and(eq(expenses.userId, userId), eq(expenses.period, period)));
+      return Number(row?.count ?? 0);
+    },
+
+    /**
+     * Bulk load of already validated rows into `period`, all independent (no parent). Every category
+     * must be the user's own. One INSERT, so it is all or nothing. Returns how many were created.
+     */
+    async createMany(userId: string, period: string, rows: BulkExpenseRow[]): Promise<number> {
+      if (rows.length === 0) return 0;
+      const categoryIds = [...new Set(rows.map((row) => row.categoryId))];
+      const owned = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), inArray(categories.id, categoryIds)));
+      if (owned.length !== categoryIds.length) throw new ExpenseCategoryNotFoundError();
+
+      const created = await db
+        .insert(expenses)
+        .values(
+          rows.map((row) => ({
+            userId,
+            categoryId: row.categoryId,
+            amountMinor: row.amountMinor,
+            period,
+            paidOn: row.paidOn,
+            note: row.note,
+            parentId: null,
+          })),
+        )
+        .returning();
+      return created.length;
     },
 
     async create(userId: string, input: ExpenseInput): Promise<ExpenseRow> {
