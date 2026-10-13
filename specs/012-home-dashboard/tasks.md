@@ -30,53 +30,53 @@
 
 **Independent Test**: el home muestra septiembre contra agosto con ingresos, gastos, queda, tasa de ahorro y variaciones.
 
-- [ ] T011 [US1] Reescribir `apps/web/messages/{es,en}/dashboard.json` con las claves de flujo, selector y estados vacíos (quitar `pending.*`)
-- [ ] T012 [US1] Crear `apps/web/app/(app)/_dashboard/period-selector.tsx` (enlaces a `/?period=`, anterior/siguiente, tope en mes actual)
-- [ ] T013 [US1] Crear `apps/web/app/(app)/_dashboard/flow-summary.tsx` (ingresos, gastos, queda, tasa de ahorro, deltas, estados no disponibles; reutiliza `computeBalance`)
-- [ ] T014 [US1] Reescribir `apps/web/app/(app)/page.tsx`: parsear `searchParams.period` (por defecto mes anterior, tope mes actual, inválido → defecto), carga en paralelo y composición del hero con `Guilloche`
-- [ ] T015 [US1] Actualizar `apps/web/app/(app)/loading.tsx` a la nueva forma
+- [x] T011 [US1] Reescribir `apps/web/messages/{es,en}/dashboard.json` con las claves de flujo, selector y estados vacíos (quitar `pending.*`)
+- [x] T012 [US1] Crear `apps/web/app/(app)/_dashboard/period-selector.tsx` (enlaces a `/?period=`, anterior/siguiente, tope en mes actual)
+- [x] T013 [US1] Crear `apps/web/app/(app)/_dashboard/flow-summary.tsx` (ingresos, gastos, queda, tasa de ahorro, deltas, estados no disponibles; reutiliza `computeBalance`)
+- [x] T014 [US1] Reescribir `apps/web/app/(app)/page.tsx`: parsear `searchParams.period` (por defecto mes anterior, tope mes actual, inválido → defecto), carga en paralelo y composición del hero con `Guilloche`
+- [x] T015 [US1] Actualizar `apps/web/app/(app)/loading.tsx` a la nueva forma
 
 **Checkpoint**: el home muestra el flujo correcto; viajes no influyen.
 
 ## Phase 4: User Story 2 — Dónde se fue el dinero (P1)
 
-- [ ] T016 [US2] Crear `apps/web/app/(app)/_dashboard/category-compare.tsx` (barras CSS con color de categoría, monto actual/anterior, variación, "Otras", enlace a la lista, estado vacío, `aria-label`)
-- [ ] T017 [US2] Añadir las claves de categorías a `dashboard.json` (es/en) e integrarlo en `page.tsx`
+- [x] T016 [US2] Crear `apps/web/app/(app)/_dashboard/category-compare.tsx` (barras CSS con color de categoría, monto actual/anterior, variación, "Otras", enlace a la lista, estado vacío, `aria-label`)
+- [x] T017 [US2] Añadir las claves de categorías a `dashboard.json` (es/en) e integrarlo en `page.tsx`
 
 ## Phase 5: User Story 3 — Compromisos y deudas (P2)
 
 - [x] T018 [P] [US3] Pruebas de `debtsOverview` en `packages/core/tests/dashboard/debts.test.ts` (activas en el período, saldadas, vencidas, fin máximo, sin deudas)
 - [x] T019 [US3] Implementar `packages/core/src/dashboard/debts.ts`
-- [ ] T020 [US3] Crear `_dashboard/commitments.tsx` y `_dashboard/debts-card.tsx`; claves es/en; integrar en `page.tsx`
+- [x] T020 [US3] Crear `_dashboard/commitments.tsx` y `_dashboard/debts-card.tsx`; claves es/en; integrar en `page.tsx`
 
 ## Phase 6: User Story 4 — Tendencia de seis meses (P2)
 
 - [x] T021 [P] [US4] Pruebas de `trendPeriods` y `buildTrend` en `packages/core/tests/dashboard/trend.test.ts` (cruce de año, ceros en meses sin datos)
 - [x] T022 [US4] Implementar `packages/core/src/dashboard/trend.ts`
-- [ ] T023 [US4] Crear `_dashboard/trend-chart.tsx` (SVG, `role="img"`, `aria-label` con valores, doble codificación no solo color, sin animación con movimiento reducido); claves es/en; integrar
+- [x] T023 [US4] Crear `_dashboard/trend-chart.tsx` (SVG, `role="img"`, `aria-label` con valores, doble codificación no solo color, sin animación con movimiento reducido); claves es/en; integrar
 
 ## Phase 7: User Story 5 — Viajes aparte (P2)
 
 - [x] T024 [P] [US5] Pruebas de `perPersonMinor` y `tripYearSpan` en `packages/core/tests/dashboard/trips.test.ts` (cero participantes, viaje que cruza el año, sin fechas)
 - [x] T025 [US5] Implementar `packages/core/src/dashboard/trips.ts`
-- [ ] T026 [US5] Crear `_dashboard/trips-strip.tsx` (cliente: `useToday`, `computeTripSchedule`, `TripPhaseBadge`; línea de tiempo del año, costo total y por persona, marca sin saldar, estado vacío); claves es/en; integrar
-- [ ] T027 [US5] Verificar que ninguna consulta ni suma del home incluye gastos de viaje (revisión de `page.tsx` + e2e)
+- [x] T026 [US5] Crear `_dashboard/trips-strip.tsx` (cliente: `useToday`, `computeTripSchedule`, `TripPhaseBadge`; línea de tiempo del año, costo total y por persona, marca sin saldar, estado vacío); claves es/en; integrar
+- [x] T027 [US5] Verificar que ninguna consulta ni suma del home incluye gastos de viaje (revisión de `page.tsx` + e2e)
 
 ## Phase 8: User Story 6 — Alertas (P2)
 
 - [x] T028 [P] [US6] Pruebas de `buildAlerts` en `packages/core/tests/dashboard/alerts.test.ts`: cada umbral justo debajo y justo en el límite, orden por severidad, tope de 4, sin alertas
 - [x] T029 [US6] Implementar `packages/core/src/dashboard/alerts.ts`
-- [ ] T030 [US6] Crear `_dashboard/alerts-panel.tsx`; claves `dashboard.alerts.<code>` es/en con los mismos placeholders; integrar
+- [x] T030 [US6] Crear `_dashboard/alerts-panel.tsx`; claves `dashboard.alerts.<code>` es/en con los mismos placeholders; integrar
 
 ## Phase 9: User Story 7 — Aviso de mes sin cargar (P3)
 
-- [ ] T031 [US7] Crear `_dashboard/capture-banner.tsx` (visible si el mes anterior al actual no tiene gastos; enlaza a `/monthly-expenses?period=`); claves es/en; integrar
+- [x] T031 [US7] Crear `_dashboard/capture-banner.tsx` (visible si el mes anterior al actual no tiene gastos; enlaza a `/monthly-expenses?period=`); claves es/en; integrar
 
 ## Phase 10: E2E y pulido
 
-- [ ] T032 Crear `apps/web/tests/e2e/home-dashboard.spec.ts` (patrón de `bulk-import.spec.ts`): datos de dos meses con `?period=`, flujo y deltas, viaje que no suma, selector, período inválido, estado vacío, aviso de captura, cambio de idioma
-- [ ] T033 [P] Revisar accesibilidad (`aria-label`, contraste, foco del selector) y responsive en 360 px
-- [ ] T034 Correr `pnpm lint`, `pnpm build`, todas las pruebas y el escenario de [quickstart.md](./quickstart.md)
+- [x] T032 Crear `apps/web/tests/e2e/home-dashboard.spec.ts` (patrón de `bulk-import.spec.ts`): datos de dos meses con `?period=`, flujo y deltas, viaje que no suma, selector, período inválido, estado vacío, aviso de captura, cambio de idioma
+- [x] T033 [P] Revisar accesibilidad (`aria-label`, contraste, foco del selector) y responsive en 360 px
+- [x] T034 Correr `pnpm lint`, `pnpm build`, todas las pruebas y el escenario de [quickstart.md](./quickstart.md)
 - [ ] T035 Preparar la integración (commit en la rama; el PR solo si la persona usuaria lo pide)
 
 ## Dependencies & Execution Order

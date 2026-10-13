@@ -1,19 +1,99 @@
 {
   "welcome": "Welcome back, {name}",
-  "subtitle": "Here is how your spending is organized.",
-  "yourCategories": "Your categories",
-  "byTypeLabel": "Categories by type",
-  "noCategories": "You have no categories yet. <link>Create your first category</link> to start grouping expenses.",
-  "thisMonth": "This month",
-  "thisMonthHint": "The remaining panels fill in as the app grows.",
-  "incomeIn": "Income in {month}",
-  "incomeHint": "Total of income counted toward this month.",
-  "viewIncome": "View monthly income",
-  "spentIn": "Spent in {month}",
-  "spentHint": "Total of expenses counted toward this month.",
-  "viewExpenses": "View monthly expenses",
-  "pending": {
-    "whereItWent": { "title": "Where it went", "note": "A breakdown by category." },
-    "latest": { "title": "Latest expenses", "note": "Your most recent entries." }
+  "subtitle": "How {month} went compared with {previous}.",
+  "period": {
+    "nav": "Change month",
+    "previous": "Previous month",
+    "next": "Next month",
+    "current": "{month} vs {previous}"
+  },
+  "capture": {
+    "title": "{month} has no expenses yet",
+    "body": "You record expenses a month behind. Load {month} to keep this dashboard up to date.",
+    "cta": "Go to {month}"
+  },
+  "flow": {
+    "title": "Cash flow",
+    "income": "Income",
+    "spent": "Spent",
+    "left": "Left over",
+    "savingsRate": "Savings rate",
+    "vs": "vs {month}",
+    "noPrevious": "No data for {month}",
+    "noRate": "Add income to calculate it",
+    "up": "up",
+    "down": "down",
+    "same": "no change",
+    "empty": "There is no income or spending in {month} yet.",
+    "addIncome": "Add income",
+    "addExpenses": "Add expenses",
+    "tripsNote": "Trip spending is tracked separately and is not included here."
+  },
+  "categories": {
+    "title": "Where it went",
+    "hint": "Spending by category, biggest changes first.",
+    "others": "Other categories ({count})",
+    "new": "New",
+    "viewAll": "See all expenses",
+    "empty": "No expenses in {month} to break down.",
+    "emptyCta": "Record expenses",
+    "row": "{name}: {current} in {month}, {previous} in {previousMonth}"
+  },
+  "commitments": {
+    "title": "Already committed",
+    "hint": "Fixed expenses and subscriptions, before anything else.",
+    "share": "{percent}% of your income",
+    "noIncome": "Add income to see the share",
+    "fixed": "Fixed expenses",
+    "subscriptions": "Subscriptions",
+    "barLabel": "Fixed expenses {fixed}, subscriptions {subscriptions}",
+    "none": "No fixed expenses or subscriptions in {month}."
+  },
+  "debts": {
+    "title": "Debts",
+    "hint": "Installments are already part of your expenses; they are not added to the commitment.",
+    "monthly": "Installments in {month}",
+    "remaining": "Installments left",
+    "endsIn": "Debt-free by",
+    "overdue": "Overdue installments",
+    "none": "You have no active debts.",
+    "view": "See debts",
+    "add": "Register a debt"
+  },
+  "trend": {
+    "title": "Last six months",
+    "hint": "Income against spending, month by month.",
+    "income": "Income",
+    "spent": "Spent",
+    "label": "Income and spending from {from} to {to}",
+    "point": "{month}: income {income}, spent {spent}"
+  },
+  "trips": {
+    "title": "Trips",
+    "hint": "Tracked on their own: trip spending is not part of the monthly totals.",
+    "timelineLabel": "Trips during {year}",
+    "today": "Today",
+    "total": "Total",
+    "perPerson": "Per person",
+    "unsettled": "To settle",
+    "undated": "No dates yet",
+    "viewAll": "See all trips",
+    "empty": "No trips yet.",
+    "emptyCta": "Plan a trip"
+  },
+  "alerts": {
+    "title": "To decide",
+    "none": "Nothing needs your attention right now.",
+    "high": "Urgent",
+    "medium": "Worth a look",
+    "low": "For your information",
+    "deficit": "You spent {amount} more than you earned.",
+    "overdueInstallments": "{count, plural, one {# debt installment is} other {# debt installments are}} overdue.",
+    "tightMargin": "Only {percent}% of your income was left over. Consider trimming spending.",
+    "categoryRise": "{category} rose {percent}% ({amount}) against the previous month.",
+    "pendingPayments": "{count, plural, one {# expense has} other {# expenses have}} no payment date, adding up to {amount}.",
+    "unsettledTrips": "{count, plural, one {# finished trip still has} other {# finished trips still have}} balances to settle.",
+    "subscriptions": "Subscriptions add up to {amount}.",
+    "subscriptionsShare": "Subscriptions add up to {amount} ({percent}% of your income)."
   }
 }
