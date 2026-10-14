@@ -29,6 +29,7 @@
     "./debts": "./src/debts/index.ts",
     "./incomes": "./src/incomes/index.ts",
     "./budget": "./src/budget/index.ts",
+    "./dashboard": "./src/dashboard/index.ts",
     "./travels": "./src/travels/index.ts"
   }
 }

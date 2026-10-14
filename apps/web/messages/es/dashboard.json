@@ -1,19 +1,99 @@
 {
   "welcome": "Bienvenido de nuevo, {name}",
-  "subtitle": "Así están organizados tus gastos.",
-  "yourCategories": "Tus categorías",
-  "byTypeLabel": "Categorías por tipo",
-  "noCategories": "Aún no tienes categorías. <link>Crea tu primera categoría</link> para empezar a agrupar tus gastos.",
-  "thisMonth": "Este mes",
-  "thisMonthHint": "Los demás paneles se irán llenando a medida que crezca la app.",
-  "incomeIn": "Ingresos de {month}",
-  "incomeHint": "Total de los ingresos que cuentan para este mes.",
-  "viewIncome": "Ver ingresos mensuales",
-  "spentIn": "Gastado en {month}",
-  "spentHint": "Total de los gastos que cuentan para este mes.",
-  "viewExpenses": "Ver gastos mensuales",
-  "pending": {
-    "whereItWent": { "title": "A dónde fue", "note": "Un desglose por categoría." },
-    "latest": { "title": "Últimos gastos", "note": "Tus registros más recientes." }
+  "subtitle": "Cómo le fue a {month} frente a {previous}.",
+  "period": {
+    "nav": "Cambiar de mes",
+    "previous": "Mes anterior",
+    "next": "Mes siguiente",
+    "current": "{month} vs {previous}"
+  },
+  "capture": {
+    "title": "{month} aún no tiene gastos",
+    "body": "Registras los gastos mes vencido. Carga {month} para mantener este tablero al día.",
+    "cta": "Ir a {month}"
+  },
+  "flow": {
+    "title": "Flujo del mes",
+    "income": "Ingresos",
+    "spent": "Gastado",
+    "left": "Te quedó",
+    "savingsRate": "Tasa de ahorro",
+    "vs": "vs {month}",
+    "noPrevious": "Sin datos de {month}",
+    "noRate": "Agrega ingresos para calcularla",
+    "up": "subió",
+    "down": "bajó",
+    "same": "sin cambio",
+    "empty": "Todavía no hay ingresos ni gastos en {month}.",
+    "addIncome": "Agregar ingresos",
+    "addExpenses": "Agregar gastos",
+    "tripsNote": "Los gastos de viajes se llevan aparte y no están incluidos aquí."
+  },
+  "categories": {
+    "title": "A dónde fue",
+    "hint": "Gasto por categoría, con los mayores cambios primero.",
+    "others": "Otras categorías ({count})",
+    "new": "Nueva",
+    "viewAll": "Ver todos los gastos",
+    "empty": "No hay gastos en {month} para desglosar.",
+    "emptyCta": "Registrar gastos",
+    "row": "{name}: {current} en {month}, {previous} en {previousMonth}"
+  },
+  "commitments": {
+    "title": "Ya comprometido",
+    "hint": "Gastos fijos y suscripciones, antes de cualquier otro gasto.",
+    "share": "{percent}% de tus ingresos",
+    "noIncome": "Agrega ingresos para ver el porcentaje",
+    "fixed": "Gastos fijos",
+    "subscriptions": "Suscripciones",
+    "barLabel": "Gastos fijos {fixed}, suscripciones {subscriptions}",
+    "none": "No hay gastos fijos ni suscripciones en {month}."
+  },
+  "debts": {
+    "title": "Deudas",
+    "hint": "Las cuotas ya forman parte de tus gastos; no se suman al compromiso.",
+    "monthly": "Cuotas de {month}",
+    "remaining": "Cuotas restantes",
+    "endsIn": "Libre de deudas en",
+    "overdue": "Cuotas vencidas",
+    "none": "No tienes deudas activas.",
+    "view": "Ver deudas",
+    "add": "Registrar una deuda"
+  },
+  "trend": {
+    "title": "Últimos seis meses",
+    "hint": "Ingresos contra gastos, mes a mes.",
+    "income": "Ingresos",
+    "spent": "Gastado",
+    "label": "Ingresos y gastos de {from} a {to}",
+    "point": "{month}: ingresos {income}, gastado {spent}"
+  },
+  "trips": {
+    "title": "Viajes",
+    "hint": "Se llevan aparte: el gasto de viajes no forma parte de los totales mensuales.",
+    "timelineLabel": "Viajes durante {year}",
+    "today": "Hoy",
+    "total": "Total",
+    "perPerson": "Por persona",
+    "unsettled": "Por saldar",
+    "undated": "Sin fechas aún",
+    "viewAll": "Ver todos los viajes",
+    "empty": "Todavía no tienes viajes.",
+    "emptyCta": "Planear un viaje"
+  },
+  "alerts": {
+    "title": "Para decidir",
+    "none": "Nada requiere tu atención por ahora.",
+    "high": "Urgente",
+    "medium": "Vale la pena revisar",
+    "low": "Para tu información",
+    "deficit": "Gastaste {amount} más de lo que te ingresó.",
+    "overdueInstallments": "{count, plural, one {# cuota de deuda está vencida} other {# cuotas de deuda están vencidas}}.",
+    "tightMargin": "Solo te quedó el {percent}% de tus ingresos. Considera recortar gastos.",
+    "categoryRise": "{category} subió {percent}% ({amount}) frente al mes anterior.",
+    "pendingPayments": "{count, plural, one {# gasto no tiene} other {# gastos no tienen}} fecha de pago y suman {amount}.",
+    "unsettledTrips": "{count, plural, one {# viaje terminado aún tiene} other {# viajes terminados aún tienen}} saldos por liquidar.",
+    "subscriptions": "Las suscripciones suman {amount}.",
+    "subscriptionsShare": "Las suscripciones suman {amount} ({percent}% de tus ingresos)."
   }
 }
