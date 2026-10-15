@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
@@ -9,6 +9,8 @@ import { Providers } from "./providers";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display" });
 const body = Instrument_Sans({ subsets: ["latin"], variable: "--font-body" });
+
+export const viewport: Viewport = { themeColor: "#0e2a24" };
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Suspense, useState, type ReactNode } from "react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { LogoMark } from "@/components/logo";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { Icon } from "@/components/ui/icon";
 
@@ -71,7 +72,8 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
         <NavigationProgress />
       </Suspense>
       <header className="sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-2.5 text-white lg:hidden">
-        <Link href="/" className="font-display text-lg font-semibold">
+        <Link href="/" className="flex items-center gap-2 font-display text-lg font-semibold">
+          <LogoMark className="h-7 w-7" />
           {tCommon("appName")}
         </Link>
         <button
@@ -94,7 +96,8 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
       </div>
 
       <aside className="hidden bg-ink p-4 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
-        <Link href="/" className="mb-8 mt-2 px-3 font-display text-xl font-semibold text-white">
+        <Link href="/" className="mb-8 mt-2 flex items-center gap-2.5 px-3 font-display text-xl font-semibold text-white">
+          <LogoMark className="h-8 w-8" />
           {tCommon("appName")}
         </Link>
         {nav}
