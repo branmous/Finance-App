@@ -7,12 +7,16 @@ export {
   DEBT_NAME_MAX_LENGTH,
   DEBT_NOTE_MAX_LENGTH,
   debtProgress,
+  debtTotalMinor,
+  deferredInstallmentMinor,
+  installmentAmount,
   installmentPeriods,
   monthsBetween,
   validateDebtInput,
 } from "./debt";
 export type {
   DebtInput,
+  DebtKind,
   DebtInputErrors,
   DebtProgress,
   DebtStatus,

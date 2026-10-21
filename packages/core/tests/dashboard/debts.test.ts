@@ -34,6 +34,21 @@ describe("debtsOverview", () => {
     expect(overview.remainingInstallments).toBe(3);
   });
 
+  it("charges the adjusted last installment of a deferred debt in its month", () => {
+    const split = {
+      kind: "deferred" as const,
+      startPeriod: "2026-07",
+      totalInstallments: 3,
+      installmentMinor: 333_333,
+      totalMinor: 1_000_000,
+      paidPeriods: [] as string[],
+    };
+    expect(debtsOverview([split], "2026-07", "2026-07").monthlyMinor).toBe(333_333);
+    expect(debtsOverview([split], "2026-08", "2026-08").monthlyMinor).toBe(333_333);
+    expect(debtsOverview([split], "2026-09", "2026-09").monthlyMinor).toBe(333_334);
+    expect(debtsOverview([split], "2026-10", "2026-10").monthlyMinor).toBe(0);
+  });
+
   it("is empty without debts", () => {
     expect(debtsOverview([], "2026-09", "2026-10")).toEqual({
       monthlyMinor: 0,

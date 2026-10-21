@@ -67,7 +67,7 @@ async function main() {
 
   await createDebtRepository(db).create(
     userId,
-    { name: "Car loan", categoryId: rent.id, installmentMinor: 200_000, startPeriod: "2020-01", totalInstallments: 6, alreadyPaid: 0, note: "" },
+    { kind: "monthly", name: "Car loan", categoryId: rent.id, installmentMinor: 200_000, totalMinor: null, startPeriod: "2020-01", totalInstallments: 6, alreadyPaid: 0, note: "" },
     new Date().toISOString().slice(0, 10),
   );
 

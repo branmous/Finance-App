@@ -1,9 +1,11 @@
-import { debtProgress, installmentPeriods } from "../debts/debt";
+import { debtProgress, installmentAmount, installmentPeriods, type DebtKind } from "../debts/debt";
 
 export type DashboardDebt = {
+  kind?: DebtKind;
   startPeriod: string;
   totalInstallments: number;
   installmentMinor: number;
+  totalMinor?: number | null;
   paidPeriods: readonly string[];
 };
 
@@ -24,7 +26,7 @@ export function debtsOverview(debts: readonly DashboardDebt[], period: string, n
   let endPeriod: string | null = null;
 
   for (const debt of debts) {
-    if (installmentPeriods(debt).includes(period)) monthlyMinor += debt.installmentMinor;
+    if (installmentPeriods(debt).includes(period)) monthlyMinor += installmentAmount(debt, period);
     const progress = debtProgress(debt, debt.paidPeriods, nowPeriod);
     remainingInstallments += progress.remainingCount;
     overdueInstallments += progress.overduePeriods.length;

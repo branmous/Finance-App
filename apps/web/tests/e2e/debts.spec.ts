@@ -76,7 +76,157 @@ async function addDebt(
   await expect(page.getByTestId(`debt-${debt.name}`)).toBeVisible();
 }
 
+async function addDeferredDebt(
+  page: Page,
+  debt: { name: string; category: string; total: string; months: string; start: string; paid?: string },
+) {
+  await page.goto("/debts");
+  await page.getByRole("button", { name: /^(New debt|Add your first debt)$/ }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByText("Deferred total", { exact: true }).click();
+  await dialog.getByLabel("What is it for?").fill(debt.name);
+  await dialog.getByLabel("Category").selectOption({ label: debt.category });
+  await dialog.getByLabel("Total amount (COP)").fill(debt.total);
+  await dialog.getByLabel("Number of months").fill(debt.months);
+  await dialog.getByLabel("First payment").fill(debt.start);
+  if (debt.paid) await dialog.getByLabel("Installments already paid").fill(debt.paid);
+  await dialog.getByRole("button", { name: "Add debt" }).click();
+  await expect(page.getByTestId(`debt-${debt.name}`)).toBeVisible();
+}
+
+test.describe("deferred debts", () => {
+  test("registers a debt by total and months, showing the installment before saving", async ({ page }) => {
+    const category = `Purchases ${runId}`;
+    const name = `Fridge ${runId}`;
+    await signIn(page, OWNER.email);
+    await createCategory(page, category);
+    await page.goto("/debts");
+
+    await page.getByRole("button", { name: /^(New debt|Add your first debt)$/ }).first().click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByText("Deferred total", { exact: true }).click();
+    await dialog.getByLabel("What is it for?").fill(name);
+    await dialog.getByLabel("Category").selectOption({ label: category });
+    await dialog.getByLabel("Total amount (COP)").fill("1200000");
+    await dialog.getByLabel("Number of months").fill("12");
+    await dialog.getByLabel("First payment").fill(`${YEAR + 4}-01`);
+    await expect(dialog.getByTestId("debt-summary")).toContainText("12 installments of");
+    await expect(dialog.getByTestId("debt-summary")).toContainText("100.000");
+    await dialog.getByRole("button", { name: "Add debt" }).click();
+
+    const card = page.getByTestId(`debt-${name}`);
+    await expect(card.getByTestId("debt-kind")).toHaveText("Deferred total");
+    await expect(card.getByTestId("debt-deferred-total")).toContainText("1.200.000");
+    await expect(card.getByTestId("debt-progress")).toHaveText("0 of 12 paid");
+    await expect(card).toContainText(/1\.200\.000 left/);
+  });
+
+  test("rejects a deferred debt whose total does not cover the months", async ({ page }) => {
+    const category = `Tiny ${runId}`;
+    await signIn(page, OWNER.email);
+    await createCategory(page, category);
+    await page.goto("/debts");
+
+    await page.getByRole("button", { name: /^(New debt|Add your first debt)$/ }).first().click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByText("Deferred total", { exact: true }).click();
+    await dialog.getByLabel("What is it for?").fill(`Tiny ${runId}`);
+    await dialog.getByLabel("Category").selectOption({ label: category });
+    await dialog.getByLabel("Total amount (COP)").fill("5");
+    await dialog.getByLabel("Number of months").fill("6");
+    await dialog.getByRole("button", { name: "Add debt" }).click();
+    await expect(dialog.getByText("The total must cover at least 1 peso per month.")).toBeVisible();
+  });
+
+  test("pays the installments with their real amounts until the debt adds up to its total", async ({ page }) => {
+    const category = `Gadgets ${runId}`;
+    const name = `Tablet ${runId}`;
+    const year = YEAR + 5;
+    await signIn(page, OWNER.email);
+    await createCategory(page, category);
+    // 1.000.000 over 3 months: 333.333, 333.333 and 333.334.
+    await addDeferredDebt(page, { name, category, total: "1000000", months: "3", start: `${year}-01` });
+
+    const card = page.getByTestId(`debt-${name}`);
+    await card.getByRole("button", { name: `January ${year}, pending` }).click();
+    await expect(card.getByTestId("debt-progress")).toHaveText("1 of 3 paid");
+    await card.getByRole("button", { name: `March ${year}, pending` }).click();
+    await expect(card.getByTestId("debt-progress")).toHaveText("2 of 3 paid");
+    await expect(card).toContainText(/333\.333 left/);
+
+    await page.goto(`/monthly-expenses?period=${year}-01`);
+    await expect(page.getByTestId("month-paid")).toHaveText(/333\.333/);
+    await page.goto(`/monthly-expenses?period=${year}-03`);
+    await expect(page.getByTestId("month-paid")).toHaveText(/333\.334/);
+
+    await page.goto("/debts");
+    await card.getByRole("button", { name: `February ${year}, pending` }).click();
+    await expect(card.getByTestId("debt-progress")).toHaveText("3 of 3 paid");
+    await expect(card).toContainText("Nothing left to pay");
+  });
+
+  test("locks the total and the months once an installment is paid", async ({ page }) => {
+    const category = `Locked ${runId}`;
+    const name = `Console ${runId}`;
+    const year = YEAR + 6;
+    await signIn(page, OWNER.email);
+    await createCategory(page, category);
+    await addDeferredDebt(page, { name, category, total: "600000", months: "3", start: `${year}-01` });
+
+    // Nothing paid yet: the total can change and the installment follows.
+    await page.getByRole("button", { name: `Edit ${name}` }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("Debt type")).toHaveCount(0);
+    await dialog.getByLabel("Total amount (COP)").fill("900000");
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    const card = page.getByTestId(`debt-${name}`);
+    await expect(card.getByTestId("debt-deferred-total")).toContainText("900.000");
+
+    // With a paid installment they are locked, but the name can still change.
+    await card.getByRole("button", { name: `January ${year}, pending` }).click();
+    await expect(card.getByTestId("debt-progress")).toHaveText("1 of 3 paid");
+    await page.getByRole("button", { name: `Edit ${name}` }).click();
+    await expect(dialog.getByLabel("Total amount (COP)")).toBeDisabled();
+    await expect(dialog.getByLabel("Number of months")).toBeDisabled();
+    await expect(dialog.getByText(/Some installments are already paid/)).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+  });
+
+  test("the home shows the real installment of each month, last one included", async ({ page }) => {
+    const category = `Home ${runId}`;
+    const name = `Sofa ${runId}`;
+    await signIn(page, OWNER.email);
+    await createCategory(page, category);
+    // A closed past year, so the home accepts the months; deleted at the end to keep reruns clean.
+    await addDeferredDebt(page, { name, category, total: "1000000", months: "3", start: "2010-01" });
+
+    await page.goto("/?period=2010-02");
+    await expect(page.getByTestId("debts-monthly")).toContainText("333.333");
+    await page.goto("/?period=2010-03");
+    await expect(page.getByTestId("debts-monthly")).toContainText("333.334");
+
+    await page.goto("/debts");
+    await page.getByRole("button", { name: `Delete ${name}` }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete debt" }).click();
+    await expect(page.getByTestId(`debt-${name}`)).toHaveCount(0);
+  });
+});
+
 test.describe("debts", () => {
+  test("keeps a monthly debt working as before when deferred debts exist (kind label, amounts)", async ({ page }) => {
+    const category = `Legacy ${runId}`;
+    const name = `Old style ${runId}`;
+    await signIn(page, OWNER.email);
+    await createCategory(page, category);
+    await addDebt(page, { name, category, amount: "250000", start: `${YEAR + 7}-01`, end: `${YEAR + 7}-04`, paid: "1" });
+
+    const card = page.getByTestId(`debt-${name}`);
+    await expect(card.getByTestId("debt-kind")).toHaveText("Monthly payment");
+    await expect(card.getByTestId("debt-deferred-total")).toHaveCount(0);
+    await expect(card.getByTestId("debt-progress")).toHaveText("1 of 4 paid");
+    await expect(card).toContainText(/750\.000 left/);
+  });
+
   test("registers a debt with the months already paid and shows its progress", async ({ page }) => {
     const category = `Insurance ${runId}`;
     const name = `Moto insurance ${runId}`;

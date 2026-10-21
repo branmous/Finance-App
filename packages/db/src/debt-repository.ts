@@ -1,4 +1,4 @@
-import { installmentPeriods, type DebtInput } from "@finance-app/core";
+import { installmentAmount, installmentPeriods, type DebtInput, type DebtKind } from "@finance-app/core";
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import { categories } from "../schema/categories";
@@ -12,7 +12,10 @@ export type DebtWithProgress = {
   id: string;
   name: string;
   categoryId: string;
+  kind: DebtKind;
   installmentMinor: number;
+  /** The total split over the months; null on a monthly debt. */
+  totalMinor: number | null;
   currency: string;
   startPeriod: string;
   totalInstallments: number;
@@ -49,6 +52,29 @@ export class DebtRangeError extends Error {
     super("Some installments are already paid outside this range. Unmark them first.");
     this.name = "DebtRangeError";
   }
+}
+
+/** The debt's total or number of months cannot change while some installment is paid. */
+export class DebtLockedError extends Error {
+  readonly code = "paidInstallmentsLocked";
+  constructor() {
+    super("Unmark the paid installments before changing the total or the months");
+    this.name = "DebtLockedError";
+  }
+}
+
+/** The kind of a debt is set when it is created. */
+export class DebtKindError extends Error {
+  readonly code = "kindLocked";
+  constructor() {
+    super("The kind of a debt cannot be changed");
+    this.name = "DebtKindError";
+  }
+}
+
+/** The row as the domain sees it: the database stores the kind as text. */
+function amountsOf(debt: DebtRow) {
+  return { ...debt, kind: debt.kind as DebtKind };
 }
 
 /** First day of the installment's month, but never later than today: a payment is not in the future. */
@@ -104,7 +130,7 @@ export function createDebtRepository(db: DbClient) {
         missing.map((period) => ({
           userId,
           categoryId: debt.categoryId,
-          amountMinor: debt.installmentMinor,
+          amountMinor: installmentAmount(amountsOf(debt), period),
           currency: debt.currency,
           period,
           paidOn: paidOnFor(period, today),
@@ -122,7 +148,9 @@ export function createDebtRepository(db: DbClient) {
           id: debts.id,
           name: debts.name,
           categoryId: debts.categoryId,
+          kind: debts.kind,
           installmentMinor: debts.installmentMinor,
+          totalMinor: debts.totalMinor,
           currency: debts.currency,
           startPeriod: debts.startPeriod,
           totalInstallments: debts.totalInstallments,
@@ -156,7 +184,7 @@ export function createDebtRepository(db: DbClient) {
         if (!debtId) continue;
         paidByDebt.set(debtId, [...(paidByDebt.get(debtId) ?? []), period]);
       }
-      return rows.map((row) => ({ ...row, paidPeriods: paidByDebt.get(row.id) ?? [] }));
+      return rows.map((row) => ({ ...row, kind: row.kind as DebtKind, paidPeriods: paidByDebt.get(row.id) ?? [] }));
     },
 
     /**
@@ -186,12 +214,21 @@ export function createDebtRepository(db: DbClient) {
       const current = await findOwn(userId, id);
       if (!current) return null;
       await assertOwnCategory(userId, input.categoryId);
+      if (input.kind !== current.kind) throw new DebtKindError();
 
       const allowed = new Set(installmentPeriods(input));
       const recorded = await db
         .select({ period: expenses.period })
         .from(expenses)
         .where(and(eq(expenses.userId, userId), eq(expenses.debtId, id)));
+      // Paid expenses keep their amount, so a deferred debt could stop adding up to its total.
+      if (
+        current.kind === "deferred" &&
+        recorded.length > 0 &&
+        (input.totalMinor !== current.totalMinor || input.totalInstallments !== current.totalInstallments)
+      ) {
+        throw new DebtLockedError();
+      }
       if (recorded.some((row) => !allowed.has(row.period))) throw new DebtRangeError();
 
       const { alreadyPaid: _ignored, ...values } = input;

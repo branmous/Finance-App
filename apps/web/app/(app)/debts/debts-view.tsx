@@ -1,6 +1,12 @@
 "use client";
 
-import { debtProgress, installmentPeriods, type DebtProgress, type DebtStatus } from "@finance-app/core/debts";
+import {
+  debtProgress,
+  installmentAmount,
+  installmentPeriods,
+  type DebtProgress,
+  type DebtStatus,
+} from "@finance-app/core/debts";
 import { formatCop } from "@finance-app/core/expenses";
 import type { ValidationError } from "@finance-app/core";
 import { useTranslations } from "next-intl";
@@ -79,7 +85,12 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
     .sort((a, b) => STATUS_ORDER[a.progress.status] - STATUS_ORDER[b.progress.status]);
 
   const running = rows.filter((row) => row.progress.status === "active" || row.progress.status === "overdue");
-  const monthlyTotal = running.reduce((sum, row) => sum + row.debt.installmentMinor, 0);
+  // The running debts' installment for this month; one whose calendar does not include it yet counts its usual installment.
+  const monthlyTotal = running.reduce(
+    (sum, row) =>
+      sum + (installmentPeriods(row.debt).includes(nowPeriod) ? installmentAmount(row.debt, nowPeriod) : row.debt.installmentMinor),
+    0,
+  );
   const remainingTotal = rows.reduce((sum, row) => sum + row.progress.remainingMinor, 0);
 
   async function runWithRollback(debtId: string, next: string[], action: () => Promise<{ ok: boolean; message?: ValidationError }>) {
@@ -199,11 +210,22 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <h2 className="truncate text-lg font-semibold">{debt.name}</h2>
                         <StatusPill status={progress.status} overdue={progress.overduePeriods.length} />
+                        <span
+                          className="rounded-full border border-paper-line px-2.5 py-0.5 text-xs font-medium text-paper-muted"
+                          data-testid="debt-kind"
+                        >
+                          {debt.kind === "deferred" ? t("kindDeferred") : t("kindMonthly")}
+                        </span>
                       </div>
                       <p className="text-sm text-paper-muted">
                         {debt.categoryName} · {format.month(debt.startPeriod)} – {format.month(progress.endPeriod)}
                         {debt.note ? ` · ${debt.note}` : ""}
                       </p>
+                      {debt.totalMinor != null ? (
+                        <p className="text-sm text-paper-muted tabular-nums" data-testid="debt-deferred-total">
+                          {t("deferredTotal", { amount: formatCop(debt.totalMinor) })}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="text-right">
                       <p className="font-semibold tabular-nums">{formatCop(debt.installmentMinor)}</p>
