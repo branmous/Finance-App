@@ -10,6 +10,8 @@ import {
 } from "@finance-app/core";
 import {
   DebtCategoryNotFoundError,
+  DebtKindError,
+  DebtLockedError,
   DebtPeriodOutOfRangeError,
   DebtRangeError,
   createDebtRepository,
@@ -44,6 +46,8 @@ function toActionError(error: unknown): DebtActionResult | null {
     return { ok: false, errors: { categoryId: validationError(error.code) } };
   }
   if (error instanceof DebtRangeError) return { ok: false, errors: { endPeriod: validationError(error.code) } };
+  if (error instanceof DebtLockedError) return { ok: false, errors: { totalMinor: validationError(error.code) } };
+  if (error instanceof DebtKindError) return { ok: false, errors: { kind: validationError(error.code) } };
   if (error instanceof DebtPeriodOutOfRangeError) return { ok: false, message: validationError(error.code) };
   return null;
 }

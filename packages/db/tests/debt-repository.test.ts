@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { createCategoryRepository } from "../src/category-repository";
 import {
   DebtCategoryNotFoundError,
+  DebtKindError,
+  DebtLockedError,
   DebtPeriodOutOfRangeError,
   DebtRangeError,
   createDebtRepository,
@@ -23,15 +25,30 @@ async function setup() {
   const insurance = await categories.create(alice.id, categoryInput);
   const bobCategory = await categories.create(bob.id, categoryInput);
   const input = {
+    kind: "monthly" as const,
     name: "Motorbike insurance",
     categoryId: insurance.id,
     installmentMinor: 300,
+    totalMinor: null,
     startPeriod: "2026-08",
     totalInstallments: 11,
     alreadyPaid: 3,
     note: "",
   };
+  // 1.000.000 split over 3 months: 333.333, 333.333 and 333.334.
+  const deferredInput = {
+    kind: "deferred" as const,
+    name: "Laptop",
+    categoryId: insurance.id,
+    installmentMinor: 333_333,
+    totalMinor: 1_000_000,
+    startPeriod: "2026-08",
+    totalInstallments: 3,
+    alreadyPaid: 0,
+    note: "",
+  };
   return {
+    deferredInput,
     debts: createDebtRepository(db),
     expenses: createExpenseRepository(db),
     alice,
@@ -181,6 +198,108 @@ describe("debt repository", () => {
       DebtRangeError,
     );
     await expect(debts.update(alice.id, "00000000-0000-4000-8000-000000000000", input)).resolves.toBeNull();
+  });
+
+  it("lists a monthly debt with its kind and no total", async () => {
+    const { debts, alice, input } = await setup();
+    await debts.create(alice.id, input, TODAY);
+    expect((await debts.list(alice.id))[0]).toMatchObject({ kind: "monthly", totalMinor: null });
+  });
+
+  describe("deferred debts", () => {
+    it("stores the total, the rounded installment and the months", async () => {
+      const { debts, alice, deferredInput } = await setup();
+      await debts.create(alice.id, deferredInput, TODAY);
+      expect((await debts.list(alice.id))[0]).toMatchObject({
+        kind: "deferred",
+        totalMinor: 1_000_000,
+        installmentMinor: 333_333,
+        totalInstallments: 3,
+        paidPeriods: [],
+      });
+    });
+
+    it("records the installments already paid with their real amounts", async () => {
+      const { debts, expenses, alice, deferredInput } = await setup();
+      await debts.create(alice.id, { ...deferredInput, alreadyPaid: 2 }, TODAY);
+      const aug = await expenses.listByPeriod(alice.id, "2026-08");
+      const sep = await expenses.listByPeriod(alice.id, "2026-09");
+      expect([aug[0]?.amountMinor, sep[0]?.amountMinor]).toEqual([333_333, 333_333]);
+      expect((await debts.list(alice.id))[0]?.paidPeriods).toEqual(["2026-08", "2026-09"]);
+    });
+
+    it("pays the last installment with the leftover, so every expense adds up to the total", async () => {
+      const { debts, expenses, alice, deferredInput } = await setup();
+      const created = await debts.create(alice.id, deferredInput, TODAY);
+      await debts.markPaid(alice.id, created.id, "2026-10", TODAY);
+      const [last] = await expenses.listByPeriod(alice.id, "2026-10");
+      expect(last?.amountMinor).toBe(333_334);
+
+      await debts.markPaidUpTo(alice.id, created.id, "2026-10", TODAY);
+      const all = [
+        ...(await expenses.listByPeriod(alice.id, "2026-08")),
+        ...(await expenses.listByPeriod(alice.id, "2026-09")),
+        ...(await expenses.listByPeriod(alice.id, "2026-10")),
+      ];
+      expect(all.map((row) => row.amountMinor)).toEqual([333_333, 333_333, 333_334]);
+      expect(all.reduce((sum, row) => sum + row.amountMinor, 0)).toBe(1_000_000);
+    });
+
+    it("does not duplicate an installment paid twice and can unpay it", async () => {
+      const { debts, expenses, alice, deferredInput } = await setup();
+      const created = await debts.create(alice.id, deferredInput, TODAY);
+      await debts.markPaid(alice.id, created.id, "2026-10", TODAY);
+      await debts.markPaid(alice.id, created.id, "2026-10", TODAY);
+      await expect(expenses.listByPeriod(alice.id, "2026-10")).resolves.toHaveLength(1);
+      await expect(debts.unmarkPaid(alice.id, created.id, "2026-10")).resolves.toBe(true);
+      await expect(expenses.listByPeriod(alice.id, "2026-10")).resolves.toHaveLength(0);
+    });
+
+    it("rejects a total smaller than the months at the database level", async () => {
+      const { debts, alice, deferredInput } = await setup();
+      await expect(
+        debts.create(alice.id, { ...deferredInput, totalMinor: 2, installmentMinor: 0 }, TODAY),
+      ).rejects.toThrow();
+    });
+
+    it("recalculates the installment when the total changes and nothing is paid", async () => {
+      const { debts, alice, deferredInput } = await setup();
+      const created = await debts.create(alice.id, deferredInput, TODAY);
+      const updated = await debts.update(alice.id, created.id, {
+        ...deferredInput,
+        totalMinor: 1_200_000,
+        installmentMinor: 400_000,
+      });
+      expect(updated).toMatchObject({ totalMinor: 1_200_000, installmentMinor: 400_000 });
+    });
+
+    it("locks the total and the months once an installment is paid, but not the name", async () => {
+      const { debts, alice, deferredInput } = await setup();
+      const created = await debts.create(alice.id, { ...deferredInput, alreadyPaid: 1 }, TODAY);
+
+      await expect(
+        debts.update(alice.id, created.id, { ...deferredInput, totalMinor: 1_200_000, installmentMinor: 400_000 }),
+      ).rejects.toBeInstanceOf(DebtLockedError);
+      await expect(
+        debts.update(alice.id, created.id, { ...deferredInput, totalInstallments: 4, installmentMinor: 250_000 }),
+      ).rejects.toBeInstanceOf(DebtLockedError);
+
+      const renamed = await debts.update(alice.id, created.id, { ...deferredInput, name: "Work laptop", note: "x" });
+      expect(renamed).toMatchObject({ name: "Work laptop", note: "x", totalMinor: 1_000_000 });
+
+      await debts.unmarkPaid(alice.id, created.id, "2026-08");
+      await expect(
+        debts.update(alice.id, created.id, { ...deferredInput, totalMinor: 1_200_000, installmentMinor: 400_000 }),
+      ).resolves.toMatchObject({ totalMinor: 1_200_000 });
+    });
+
+    it("does not let an edit change the kind of a debt", async () => {
+      const { debts, alice, input, deferredInput } = await setup();
+      const created = await debts.create(alice.id, deferredInput, TODAY);
+      await expect(debts.update(alice.id, created.id, { ...input, alreadyPaid: 0 })).rejects.toBeInstanceOf(
+        DebtKindError,
+      );
+    });
   });
 
   it("keeps the paid expenses when the debt is removed", async () => {

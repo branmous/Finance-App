@@ -19,3 +19,6 @@ Intereses y amortización, préstamos a terceros, pagos parciales o adelantados,
 ## Verificación
 - `pnpm --filter @finance-app/core test` y `pnpm --filter @finance-app/db test`.
 - `pnpm --filter web test:e2e` (`apps/web/tests/e2e/debts.spec.ts`), con PostgreSQL accesible y la migración `0006_debts` aplicada.
+
+## Ver también
+La deuda diferida (valor total + meses) se especifica en [013-deuda-diferida](../013-deuda-diferida/spec.md); esta spec describe el tipo cuota mensual.

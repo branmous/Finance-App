@@ -29,6 +29,8 @@ export type {
 export { debts } from "../schema/debts";
 export {
   DebtCategoryNotFoundError,
+  DebtKindError,
+  DebtLockedError,
   DebtPeriodOutOfRangeError,
   DebtRangeError,
   createDebtRepository,
