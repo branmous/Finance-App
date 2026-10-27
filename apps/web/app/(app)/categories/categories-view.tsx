@@ -9,6 +9,7 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { RowActions } from "@/components/ui/row-actions";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { deleteCategory } from "./actions";
@@ -97,25 +98,16 @@ export function CategoriesView({ categories }: { categories: CategoryItem[] }) {
                         <span className="block truncate font-medium">{item.name}</span>
                         {item.paymentInfo ? <PaymentInfo value={item.paymentInfo} /> : null}
                       </div>
-                      <Button
-                        variant="ghost"
-                        className="px-2.5"
-                        onClick={() => openEditor(item)}
-                        aria-label={t("edit", { name: item.name })}
-                      >
-                        <Icon name="pencil" width={18} height={18} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="px-2.5 hover:text-clay"
-                        onClick={() => {
-                          setDeleteError(null);
-                          setDeleting(item);
+                      <RowActions
+                        edit={{ label: t("edit", { name: item.name }), onClick: () => openEditor(item) }}
+                        remove={{
+                          label: t("delete", { name: item.name }),
+                          onClick: () => {
+                            setDeleteError(null);
+                            setDeleting(item);
+                          },
                         }}
-                        aria-label={t("delete", { name: item.name })}
-                      >
-                        <Icon name="trash" width={18} height={18} />
-                      </Button>
+                      />
                     </li>
                   ))}
                 </ul>

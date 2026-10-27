@@ -12,6 +12,7 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { RowActions } from "@/components/ui/row-actions";
 import { useFormatters } from "@/lib/format";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
@@ -124,62 +125,43 @@ export function ExpensesView({
           ) : null}
         </div>
         <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
-        {parent ? (
-          <Button
-            variant="ghost"
-            className="px-2.5 text-xs"
-            onClick={() => makeIndependent(item)}
-            loading={pending}
-            aria-label={t("makeIndependentLabel", { name: item.categoryName })}
-          >
-            {t("makeIndependent")}
-          </Button>
-        ) : null}
-        {isHttpUrl(item.paymentInfo) ? (
-          <a
-            href={item.paymentInfo}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t("paymentLink", { name: item.categoryName })}
-            className="inline-flex min-h-10 items-center justify-center rounded-field px-2.5 text-paper-muted hover:bg-leaf-tint hover:text-ink"
-          >
-            <Icon name="externalLink" width={18} height={18} />
-          </a>
-        ) : null}
-        {!item.paidOn && !parent ? (
-          <Button
-            variant="ghost"
-            className="px-2.5 hover:text-leaf"
-            onClick={() => markPaid(item)}
-            loading={pending}
-            aria-label={t("markPaid", { name: item.categoryName })}
-          >
-            <Icon name="checkCircle" width={18} height={18} />
-          </Button>
-        ) : null}
-        {item.upcomingDebt ? null : (
-          <>
-            <Button
-              variant="ghost"
-              className="px-2.5"
-              onClick={() => setEditing(item)}
-              aria-label={t("edit", { name: item.categoryName })}
-            >
-              <Icon name="pencil" width={18} height={18} />
-            </Button>
-            <Button
-              variant="ghost"
-              className="px-2.5 hover:text-clay"
-              onClick={() => {
-                setDeleteError(null);
-                setDeleting(item);
-              }}
-              aria-label={t("delete", { name: item.categoryName })}
-            >
-              <Icon name="trash" width={18} height={18} />
-            </Button>
-          </>
-        )}
+        <RowActions
+          link={
+            isHttpUrl(item.paymentInfo)
+              ? { label: t("paymentLink", { name: item.categoryName }), href: item.paymentInfo }
+              : undefined
+          }
+          unlink={
+            parent
+              ? {
+                  label: t("makeIndependentLabel", { name: item.categoryName }),
+                  onClick: () => makeIndependent(item),
+                  loading: pending,
+                }
+              : undefined
+          }
+          pay={
+            !item.paidOn && !parent
+              ? { label: t("markPaid", { name: item.categoryName }), onClick: () => markPaid(item), loading: pending }
+              : undefined
+          }
+          edit={
+            item.upcomingDebt
+              ? undefined
+              : { label: t("edit", { name: item.categoryName }), onClick: () => setEditing(item) }
+          }
+          remove={
+            item.upcomingDebt
+              ? undefined
+              : {
+                  label: t("delete", { name: item.categoryName }),
+                  onClick: () => {
+                    setDeleteError(null);
+                    setDeleting(item);
+                  },
+                }
+          }
+        />
       </div>
     );
   }
