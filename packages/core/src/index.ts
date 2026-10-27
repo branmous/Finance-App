@@ -17,6 +17,7 @@ export {
   CATEGORY_NAME_MAX_LENGTH,
   CATEGORY_PAYMENT_INFO_MAX_LENGTH,
   CATEGORY_TYPES,
+  isHttpUrl,
   validateCategoryInput,
 } from "./categories/category";
 export type {
@@ -56,6 +57,8 @@ export {
   monthsBetween,
   validateDebtInput,
 } from "./debts/debt";
+export { pendingInstallmentsForPeriod } from "./debts/pending";
+export type { PendingDebtSource, PendingInstallment } from "./debts/pending";
 export type {
   DebtInput,
   DebtKind,

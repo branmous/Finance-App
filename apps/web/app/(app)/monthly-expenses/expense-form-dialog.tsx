@@ -28,6 +28,10 @@ export type ExpenseItem = {
   categoryName: string;
   categoryColor: CategoryColor;
   categoryIcon: CategoryIcon;
+  /** The category's payment link or instructions; empty when it has none. */
+  paymentInfo: string;
+  /** Set on an installment of a debt that has no expense yet: it is shown, not stored. */
+  upcomingDebt?: { debtId: string; period: string };
 };
 
 type Props = {

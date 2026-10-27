@@ -34,7 +34,16 @@ const CATEGORY_NOT_FOUND = validationError("categoryNotFound");
 
 function refresh() {
   revalidatePath("/monthly-expenses");
+  // An installment of a debt is an expense, so paying it changes the debt's progress too.
+  revalidatePath("/debts");
   revalidatePath("/");
+}
+
+function todayLocal(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 /** Turns the repository's expected failures into field errors; anything else is a real bug and rethrown. */
@@ -81,6 +90,18 @@ export async function updateExpense(id: string, input: unknown): Promise<Expense
     if (mapped) return mapped;
     throw error;
   }
+  refresh();
+  return { ok: true };
+}
+
+/** Marks a pending expense as paid today, without opening the edit form. */
+export async function markExpensePaid(id: string): Promise<ExpenseActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, message: SESSION_EXPIRED };
+  if (!isUuid(id)) return { ok: false, message: NOT_FOUND };
+
+  const done = await createExpenseRepository(getDb()).markPaid(user.id, id, todayLocal());
+  if (!done) return { ok: false, message: NOT_FOUND };
   refresh();
   return { ok: true };
 }

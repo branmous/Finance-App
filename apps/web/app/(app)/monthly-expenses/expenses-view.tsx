@@ -1,5 +1,6 @@
 "use client";
 
+import { isHttpUrl } from "@finance-app/core/categories";
 import { formatCop, shiftPeriod } from "@finance-app/core/expenses";
 import type { PeriodSummary } from "@finance-app/db";
 import { useTranslations } from "next-intl";
@@ -14,7 +15,8 @@ import { Icon } from "@/components/ui/icon";
 import { useFormatters } from "@/lib/format";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
-import { deleteExpense, unlinkExpense } from "./actions";
+import { setInstallmentPaid } from "../debts/actions";
+import { deleteExpense, markExpensePaid, unlinkExpense } from "./actions";
 import { BalanceCard } from "./balance-card";
 import { BulkImportDialog } from "./bulk-import-dialog";
 import { CopyExpensesDialog } from "./copy-expenses-dialog";
@@ -79,6 +81,17 @@ export function ExpensesView({
     });
   }
 
+  function markPaid(item: ExpenseItem) {
+    setListError(null);
+    startTransition(async () => {
+      const { upcomingDebt } = item;
+      const result = upcomingDebt
+        ? await setInstallmentPaid(upcomingDebt.debtId, upcomingDebt.period, true)
+        : await markExpensePaid(item.id);
+      if (!result.ok) setListError(message(result.message) ?? t("updateFailed"));
+    });
+  }
+
   function renderRow(item: ExpenseItem, parent?: ExpenseItem) {
     const linked = childrenOf(item.id);
     const linkedTotal = linked.reduce((sum, child) => sum + child.amountMinor, 0);
@@ -97,7 +110,11 @@ export function ExpensesView({
                 {t("pending")}
               </span>
             )}
-            {item.note ? ` · ${item.note}` : ""}
+            {item.upcomingDebt
+              ? ` · ${t("debtInstallmentNote", { name: item.note })}`
+              : item.note
+                ? ` · ${item.note}`
+                : ""}
           </p>
           {linked.length > 0 ? (
             <p className={`truncate text-xs ${linkedTotal > item.amountMinor ? "font-semibold text-clay" : "text-paper-muted"}`}>
@@ -118,25 +135,51 @@ export function ExpensesView({
             {t("makeIndependent")}
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          className="px-2.5"
-          onClick={() => setEditing(item)}
-          aria-label={t("edit", { name: item.categoryName })}
-        >
-          <Icon name="pencil" width={18} height={18} />
-        </Button>
-        <Button
-          variant="ghost"
-          className="px-2.5 hover:text-clay"
-          onClick={() => {
-            setDeleteError(null);
-            setDeleting(item);
-          }}
-          aria-label={t("delete", { name: item.categoryName })}
-        >
-          <Icon name="trash" width={18} height={18} />
-        </Button>
+        {isHttpUrl(item.paymentInfo) ? (
+          <a
+            href={item.paymentInfo}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t("paymentLink", { name: item.categoryName })}
+            className="inline-flex min-h-10 items-center justify-center rounded-field px-2.5 text-paper-muted hover:bg-leaf-tint hover:text-ink"
+          >
+            <Icon name="externalLink" width={18} height={18} />
+          </a>
+        ) : null}
+        {!item.paidOn && !parent ? (
+          <Button
+            variant="ghost"
+            className="px-2.5 hover:text-leaf"
+            onClick={() => markPaid(item)}
+            loading={pending}
+            aria-label={t("markPaid", { name: item.categoryName })}
+          >
+            <Icon name="checkCircle" width={18} height={18} />
+          </Button>
+        ) : null}
+        {item.upcomingDebt ? null : (
+          <>
+            <Button
+              variant="ghost"
+              className="px-2.5"
+              onClick={() => setEditing(item)}
+              aria-label={t("edit", { name: item.categoryName })}
+            >
+              <Icon name="pencil" width={18} height={18} />
+            </Button>
+            <Button
+              variant="ghost"
+              className="px-2.5 hover:text-clay"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleting(item);
+              }}
+              aria-label={t("delete", { name: item.categoryName })}
+            >
+              <Icon name="trash" width={18} height={18} />
+            </Button>
+          </>
+        )}
       </div>
     );
   }
@@ -282,7 +325,7 @@ export function ExpensesView({
         expense={editing ?? null}
         categories={categories}
         defaultPeriod={period}
-        parentCandidates={topLevel}
+        parentCandidates={topLevel.filter((item) => !item.upcomingDebt)}
         hasChildren={editingChildren > 0}
         onClose={() => setEditing(undefined)}
       />
@@ -291,7 +334,7 @@ export function ExpensesView({
         open={copying}
         sourcePeriod={shiftPeriod(period, -1)}
         sources={lastMonthExpenses}
-        existing={expenses}
+        existing={expenses.filter((item) => !item.upcomingDebt)}
         onClose={() => setCopying(false)}
       />
 

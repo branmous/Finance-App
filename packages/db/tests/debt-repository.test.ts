@@ -121,6 +121,19 @@ describe("debt repository", () => {
     expect(listed?.paidPeriods).toEqual(["2026-09"]);
   });
 
+  it("pays an upcoming installment nobody registered yet, creating its expense with the debt link", async () => {
+    const { debts, expenses, alice, input } = await setup();
+    const created = await debts.create(alice.id, { ...input, alreadyPaid: 0 }, TODAY);
+    await expect(expenses.listByPeriod(alice.id, "2026-11")).resolves.toHaveLength(0);
+
+    await debts.markPaid(alice.id, created.id, "2026-11", TODAY);
+
+    const [row] = await expenses.listByPeriod(alice.id, "2026-11");
+    expect(row).toMatchObject({ debtId: created.id, amountMinor: 300 });
+    expect(row?.paidOn).not.toBeNull();
+    const [listed] = await debts.list(alice.id);
+    expect(listed?.paidPeriods).toEqual(["2026-11"]);
+  });
   it("treats an installment whose expense was set back to pending as unpaid, and pays it again", async () => {
     const { debts, expenses, alice, input } = await setup();
     const created = await debts.create(alice.id, { ...input, alreadyPaid: 1 }, TODAY);

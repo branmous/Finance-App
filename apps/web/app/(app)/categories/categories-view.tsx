@@ -1,6 +1,6 @@
 "use client";
 
-import { CATEGORY_TYPES } from "@finance-app/core/categories";
+import { CATEGORY_TYPES, isHttpUrl } from "@finance-app/core/categories";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
@@ -13,15 +13,6 @@ import { useValidationMessage } from "@/lib/use-validation-message";
 
 import { deleteCategory } from "./actions";
 import { CategoryFormDialog, type CategoryItem } from "./category-form-dialog";
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const { protocol } = new URL(value);
-    return protocol === "http:" || protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function PaymentInfo({ value }: { value: string }) {
   if (isHttpUrl(value)) {

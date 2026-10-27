@@ -98,3 +98,8 @@ export function validateCategoryInput(input: unknown): CategoryValidationResult 
     },
   };
 }
+
+/** True for an http(s) URL, the only kind of payment info that can be opened as a link. */
+export function isHttpUrl(value: string): boolean {
+  return /^https?:\/\/[^\s/?#]+\S*$/i.test(value);
+}
