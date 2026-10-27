@@ -21,7 +21,7 @@ export function DebtsCard({ period, overview, hasDebts }: { period: string; over
       {!hasDebts || !active ? (
         <div className="mt-6">
           <p className="text-sm text-paper-muted">{t("none")}</p>
-          <Link href="/debts" className="mt-2 inline-block text-sm font-semibold text-leaf underline underline-offset-4">
+          <Link href="/debts" className="mt-2 inline-block py-2 text-sm font-semibold text-leaf underline underline-offset-4">
             {hasDebts ? t("view") : t("add")}
           </Link>
         </div>
@@ -55,7 +55,7 @@ export function DebtsCard({ period, overview, hasDebts }: { period: string; over
               </div>
             ) : null}
           </dl>
-          <Link href="/debts" className="mt-4 inline-block text-sm font-semibold text-leaf underline underline-offset-4">
+          <Link href="/debts" className="mt-4 inline-block py-2 text-sm font-semibold text-leaf underline underline-offset-4">
             {t("view")}
           </Link>
         </>

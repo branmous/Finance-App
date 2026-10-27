@@ -47,7 +47,7 @@ export function CategoryCompare({ period, previousPeriod, top, rest }: Props) {
       {top.length === 0 ? (
         <div className="mt-6">
           <p className="text-sm text-paper-muted">{t("empty", { month })}</p>
-          <Link href={`/monthly-expenses?period=${period}`} className="mt-2 inline-block text-sm font-semibold text-leaf underline underline-offset-4">
+          <Link href={`/monthly-expenses?period=${period}`} className="mt-2 inline-block py-2 text-sm font-semibold text-leaf underline underline-offset-4">
             {t("emptyCta")}
           </Link>
         </div>
@@ -107,7 +107,7 @@ export function CategoryCompare({ period, previousPeriod, top, rest }: Props) {
               {previousMonth}
             </span>
           </p>
-          <Link href={`/monthly-expenses?period=${period}`} className="mt-3 inline-block text-sm font-semibold text-leaf underline underline-offset-4">
+          <Link href={`/monthly-expenses?period=${period}`} className="mt-3 inline-block py-2 text-sm font-semibold text-leaf underline underline-offset-4">
             {t("viewAll")}
           </Link>
         </>

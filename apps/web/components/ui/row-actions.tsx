@@ -9,12 +9,14 @@ type Props = {
   pay?: Action | undefined;
   edit?: Action | undefined;
   remove?: Action | undefined;
+  /** On phones, drops to its own line below the row; the parent row must use `flex-wrap`. */
+  stacked?: boolean;
 };
 
 /** Row actions in one fixed order (link, unlink, pay, edit, delete), so a missing one never shifts the rest. */
-export function RowActions({ link, unlink, pay, edit, remove }: Props) {
+export function RowActions({ link, unlink, pay, edit, remove, stacked = false }: Props) {
   return (
-    <div className="flex shrink-0 items-center">
+    <div className={`flex shrink-0 items-center ${stacked ? "max-sm:order-last max-sm:w-full max-sm:justify-end" : ""}`}>
       {link ? <IconButton icon="externalLink" label={link.label} href={link.href} /> : null}
       {unlink ? <IconButton icon="unlink" label={unlink.label} onClick={unlink.onClick} loading={unlink.loading} /> : null}
       {pay ? <IconButton icon="check" tone="positive" label={pay.label} onClick={pay.onClick} loading={pay.loading} /> : null}

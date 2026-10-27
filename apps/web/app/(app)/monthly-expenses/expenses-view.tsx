@@ -97,9 +97,9 @@ export function ExpensesView({
     const linked = childrenOf(item.id);
     const linkedTotal = linked.reduce((sum, child) => sum + child.amountMinor, 0);
     return (
-      <div className={`flex items-center gap-4 py-3 ${parent ? "pl-6 sm:pl-12" : ""}`}>
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 py-3 sm:flex-nowrap ${parent ? "pl-6 sm:pl-12" : ""}`}>
         <CategoryBadge color={item.categoryColor} icon={item.categoryIcon} size={parent ? 32 : 40} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-32">
           <p className="truncate font-medium">{item.categoryName}</p>
           <p className="truncate text-sm text-paper-muted">
             {parent ? (
@@ -126,6 +126,7 @@ export function ExpensesView({
         </div>
         <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
         <RowActions
+          stacked
           link={
             isHttpUrl(item.paymentInfo)
               ? { label: t("paymentLink", { name: item.categoryName }), href: item.paymentInfo }

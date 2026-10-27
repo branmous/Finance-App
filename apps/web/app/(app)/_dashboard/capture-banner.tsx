@@ -23,7 +23,7 @@ export function CaptureBanner({ month }: { month: string }) {
       </div>
       <Link
         href={`/monthly-expenses?period=${month}`}
-        className="rounded-field bg-ink px-4 py-2 text-sm font-semibold text-paper hover:bg-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf"
+        className="inline-flex min-h-11 items-center rounded-field bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf"
       >
         {t("cta", { month: label })}
       </Link>

@@ -71,8 +71,8 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
       <Suspense fallback={null}>
         <NavigationProgress />
       </Suspense>
-      <header className="sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-2.5 text-white lg:hidden">
-        <Link href="/" className="flex items-center gap-2 font-display text-lg font-semibold">
+      <header className="sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-1.5 text-white lg:hidden">
+        <Link href="/" className="flex min-h-11 items-center gap-2 font-display text-lg font-semibold">
           <LogoMark className="h-7 w-7" />
           {tCommon("appName")}
         </Link>
@@ -82,7 +82,7 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           aria-label={menuOpen ? t("closeMenu") : t("openMenu")}
-          className="rounded-field p-2 hover:bg-ink-soft"
+          className="-mr-2 inline-flex size-11 items-center justify-center rounded-field hover:bg-ink-soft"
         >
           <Icon name={menuOpen ? "close" : "menu"} />
         </button>
@@ -90,7 +90,7 @@ export function AppShell({ userName, userEmail, children }: AppShellProps) {
 
       <div
         id="mobile-menu"
-        className={`${menuOpen ? "flex" : "hidden"} fixed inset-x-0 bottom-0 top-[3.25rem] z-20 flex-col bg-ink p-4 lg:hidden`}
+        className={`${menuOpen ? "flex" : "hidden"} fixed inset-x-0 bottom-0 top-[3.5rem] z-20 flex-col bg-ink p-4 lg:hidden`}
       >
         {nav}
       </div>

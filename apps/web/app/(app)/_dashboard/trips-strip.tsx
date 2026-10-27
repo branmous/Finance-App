@@ -41,7 +41,7 @@ export function TripsStrip({ year, trips }: { year: number; trips: DashboardTrip
         <h2 id="trips-title" className="text-base font-semibold">
           {t("title")}
         </h2>
-        <Link href="/travels" className="text-sm font-semibold text-leaf underline underline-offset-4">
+        <Link href="/travels" className="inline-block py-2 text-sm font-semibold text-leaf underline underline-offset-4">
           {t("viewAll")}
         </Link>
       </div>
@@ -50,7 +50,7 @@ export function TripsStrip({ year, trips }: { year: number; trips: DashboardTrip
       {trips.length === 0 ? (
         <div className="mt-6">
           <p className="text-sm text-paper-muted">{t("empty")}</p>
-          <Link href="/travels" className="mt-2 inline-block text-sm font-semibold text-leaf underline underline-offset-4">
+          <Link href="/travels" className="mt-2 inline-block py-2 text-sm font-semibold text-leaf underline underline-offset-4">
             {t("emptyCta")}
           </Link>
         </div>
