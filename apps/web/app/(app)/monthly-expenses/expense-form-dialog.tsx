@@ -1,19 +1,37 @@
 "use client";
 
-import type { CategoryColor, CategoryIcon, CategoryType } from "@finance-app/core/categories";
+import {
+  CATEGORY_COLORS,
+  CATEGORY_ICONS,
+  CATEGORY_NAME_MAX_LENGTH,
+  CATEGORY_PAYMENT_INFO_MAX_LENGTH,
+  CATEGORY_TYPES,
+  type CategoryColor,
+  type CategoryIcon,
+  type CategoryInputErrors,
+  type CategoryType,
+} from "@finance-app/core/categories";
 import { EXPENSE_NOTE_MAX_LENGTH, formatCop, type ExpenseInputErrors } from "@finance-app/core/expenses";
 import type { ValidationError } from "@finance-app/core";
 import { useTranslations } from "next-intl";
 import { useState, useTransition, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Combobox } from "@/components/ui/combobox";
 import { Dialog } from "@/components/ui/dialog";
 import { Input, Select } from "@/components/ui/field";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
+import { createCategory } from "../categories/actions";
 import { createExpense, updateExpense } from "./actions";
 
 export type CategoryOption = { id: string; name: string; type: CategoryType };
+
+/** What the inline "new category" form holds while it is open. */
+type NewCategoryDraft = { name: string; type: CategoryType; paymentInfo: string };
+
+// Same starting type as the Categories page offers.
+const DEFAULT_CATEGORY_TYPE: CategoryType = "subscription";
 
 export type ExpenseItem = {
   id: string;
@@ -80,9 +98,18 @@ function ExpenseForm({
   onClose,
 }: Omit<Props, "open">) {
   const t = useTranslations("expenses");
+  const tCategories = useTranslations("categories");
   const tCommon = useTranslations("common");
   const message = useValidationMessage();
   const [categoryId, setCategoryId] = useState(expense?.categoryId ?? categories[0]?.id ?? "");
+  // Categories created from this form: listed right away, before the server's refreshed list arrives.
+  const [createdCategories, setCreatedCategories] = useState<CategoryOption[]>([]);
+  // null = the search box is showing; an object = the inline "new category" form is.
+  const [newCategory, setNewCategory] = useState<NewCategoryDraft | null>(null);
+  const [newCategoryErrors, setNewCategoryErrors] = useState<CategoryInputErrors>({});
+  const [newCategoryError, setNewCategoryError] = useState<string | null>(null);
+  const [creatingCategory, startCreatingCategory] = useTransition();
+  const allCategories = [...categories, ...createdCategories.filter((made) => !categories.some((c) => c.id === made.id))];
   const [amount, setAmount] = useState(expense ? String(expense.amountMinor) : "");
   // New expenses default to "already paid today"; an existing pending one starts unchecked.
   const [paid, setPaid] = useState(expense ? expense.paidOn !== null : true);
@@ -115,8 +142,39 @@ function ExpenseForm({
     return t("hintStandalone");
   }
 
+  function cancelNewCategory() {
+    setNewCategory(null);
+    setNewCategoryErrors({});
+    setNewCategoryError(null);
+  }
+
+  function saveNewCategory() {
+    if (!newCategory) return;
+    setNewCategoryErrors({});
+    setNewCategoryError(null);
+    startCreatingCategory(async () => {
+      const result = await createCategory({
+        name: newCategory.name,
+        type: newCategory.type,
+        color: CATEGORY_COLORS[0],
+        icon: CATEGORY_ICONS[0],
+        paymentInfo: newCategory.paymentInfo,
+      });
+      if (result.ok) {
+        setCreatedCategories((current) => [...current, { id: result.id, name: newCategory.name.trim(), type: newCategory.type }]);
+        setCategoryId(result.id);
+        setErrors(({ categoryId: _stale, ...rest }) => rest);
+        cancelNewCategory();
+        return;
+      }
+      setNewCategoryErrors(result.errors ?? {});
+      setNewCategoryError(message(result.message) ?? (result.errors ? null : t("categoryCreateFailed")));
+    });
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (newCategory) return;
     setErrors({});
     setFormError(null);
 
@@ -142,14 +200,75 @@ function ExpenseForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <Select
-        id="expense-category"
-        label={t("category")}
-        value={categoryId}
-        onChange={(event) => setCategoryId(event.target.value)}
-        options={categories.map((category) => ({ value: category.id, label: category.name }))}
-        error={message(errors.categoryId)}
-      />
+      {newCategory ? (
+        <fieldset className="space-y-4 rounded-field border border-paper-line bg-leaf-tint/40 p-4">
+          <legend className="px-1 text-sm font-semibold">{t("categoryCreateTitle")}</legend>
+          <Input
+            id="new-category-name"
+            label={tCategories("name")}
+            value={newCategory.name}
+            onChange={(event) => setNewCategory({ ...newCategory, name: event.target.value })}
+            onKeyDown={(event) => {
+              // Enter here saves the category, not the whole expense.
+              if (event.key === "Enter") {
+                event.preventDefault();
+                saveNewCategory();
+              }
+            }}
+            maxLength={CATEGORY_NAME_MAX_LENGTH + 10}
+            placeholder={tCategories("namePlaceholder")}
+            error={message(newCategoryErrors.name)}
+            autoFocus
+          />
+          <Select
+            id="new-category-type"
+            label={tCategories("type")}
+            value={newCategory.type}
+            onChange={(event) => setNewCategory({ ...newCategory, type: event.target.value as CategoryType })}
+            options={CATEGORY_TYPES.map((value) => ({ value, label: tCategories(`types.${value}.label`) }))}
+            error={message(newCategoryErrors.type)}
+          />
+          <Input
+            id="new-category-payment-info"
+            label={tCategories("paymentInfo")}
+            value={newCategory.paymentInfo}
+            onChange={(event) => setNewCategory({ ...newCategory, paymentInfo: event.target.value })}
+            maxLength={CATEGORY_PAYMENT_INFO_MAX_LENGTH + 10}
+            placeholder={tCategories("paymentInfoPlaceholder")}
+            error={message(newCategoryErrors.paymentInfo)}
+          />
+          {newCategoryError ? (
+            <p role="alert" className="rounded-field bg-clay-tint px-3 py-2.5 text-sm text-clay">
+              {newCategoryError}
+            </p>
+          ) : null}
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={cancelNewCategory}>
+              {tCommon("cancel")}
+            </Button>
+            <Button onClick={saveNewCategory} loading={creatingCategory}>
+              {t("categorySave")}
+            </Button>
+          </div>
+        </fieldset>
+      ) : (
+        <Combobox
+          id="expense-category"
+          label={t("category")}
+          value={categoryId}
+          onChange={setCategoryId}
+          options={allCategories.map((category) => ({
+            value: category.id,
+            label: category.name,
+            hint: tCategories(`types.${category.type}.label`),
+          }))}
+          placeholder={t("categorySearchPlaceholder")}
+          noResults={t("categoryNoResults")}
+          error={message(errors.categoryId)}
+          onCreate={(typed) => setNewCategory({ name: typed, type: DEFAULT_CATEGORY_TYPE, paymentInfo: "" })}
+          createLabel={(typed) => (typed ? t("categoryCreate", { name: typed }) : t("categoryCreateEmpty"))}
+        />
+      )}
 
       <Input
         id="expense-amount"

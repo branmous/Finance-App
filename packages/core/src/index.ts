@@ -17,7 +17,10 @@ export {
   CATEGORY_NAME_MAX_LENGTH,
   CATEGORY_PAYMENT_INFO_MAX_LENGTH,
   CATEGORY_TYPES,
+  filterCategories,
+  findExactCategory,
   isHttpUrl,
+  normalizeCategoryText,
   validateCategoryInput,
 } from "./categories/category";
 export type {

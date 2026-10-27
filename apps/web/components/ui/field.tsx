@@ -1,11 +1,11 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
 
-const CONTROL =
+export const CONTROL =
   "mt-1.5 block min-h-11 w-full rounded-field border border-paper-line bg-paper-raised px-3 text-base text-ink placeholder:text-paper-muted/70 focus:border-leaf";
 
 type FieldShellProps = { id: string; label: string; error?: string | undefined; children: ReactNode };
 
-function FieldShell({ id, label, error, children }: FieldShellProps) {
+export function FieldShell({ id, label, error, children }: FieldShellProps) {
   return (
     <div>
       <label htmlFor={id} className="text-sm font-medium text-ink">

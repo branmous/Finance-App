@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * Covers specs/004-gastos-mensuales. Like categories.spec.ts it needs a reachable
@@ -99,10 +99,18 @@ function monthOf(offset: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+/** Types part of the name in the category search box and picks the matching option. */
+async function pickCategory(dialog: Locator, name: string) {
+  const search = dialog.getByRole("combobox", { name: "Category" });
+  await search.fill(name);
+  await dialog.getByRole("option", { name, exact: true }).click();
+  await expect(search).toHaveValue(name);
+}
+
 async function addExpense(page: Page, fields: ExpenseFields) {
   await page.getByRole("button", { name: "New expense" }).first().click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Category").selectOption({ label: fields.category });
+  await pickCategory(dialog, fields.category);
   await dialog.getByLabel("Amount paid (COP)").fill(fields.amount);
   if (fields.paidOn === null) {
     await dialog.getByLabel("Already paid").uncheck();
@@ -142,6 +150,32 @@ test("records an expense and shows the month total", async ({ page }) => {
   await deleteExpense(page, rent);
   await expect(page.getByTestId("month-total")).not.toContainText("2.");
   await deleteCategory(page, rent);
+});
+
+test("creates a category from the expense form and uses it right away", async ({ page }) => {
+  const name = `Inline ${runId}`;
+  await signIn(page, OWNER.email);
+  await createCategory(page, `Seed ${runId}`); // the form needs at least one category to open
+
+  await openMonth(page, MONTHS.basic);
+  await page.getByRole("button", { name: "New expense" }).first().click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("combobox", { name: "Category" }).fill(name);
+  await dialog.getByRole("option", { name: `Create “${name}”` }).click();
+
+  await expect(dialog.getByLabel("Name")).toHaveValue(name);
+  await dialog.getByRole("button", { name: "Save category" }).click();
+  await expect(dialog.getByRole("combobox", { name: "Category" })).toHaveValue(name);
+
+  await dialog.getByLabel("Amount paid (COP)").fill("12000");
+  await dialog.getByLabel("Date paid").fill("2031-03-02");
+  await dialog.getByRole("button", { name: "Add expense" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+
+  await deleteExpense(page, name);
+  await deleteCategory(page, name);
+  await deleteCategory(page, `Seed ${runId}`);
 });
 
 test("a late payment counts toward the month it belongs to, and past months can be browsed", async ({ page }) => {
