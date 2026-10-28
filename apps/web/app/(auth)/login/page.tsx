@@ -51,7 +51,7 @@ export default function LoginPage() {
 
       <main className="flex items-center justify-center px-4 py-12 sm:px-8">
         <div className="w-full max-w-sm">
-          <LanguageSwitcher className="mb-8 ml-auto w-40 text-paper-muted" />
+          <LanguageSwitcher className="mb-8 ml-auto w-fit text-paper-muted" />
           <p className="mb-10 flex items-center gap-2 font-display text-lg font-semibold lg:hidden">
             <LogoMark className="h-7 w-7" />
             {tCommon("appName")}

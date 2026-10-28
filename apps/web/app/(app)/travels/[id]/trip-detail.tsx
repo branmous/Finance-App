@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState, useTransition, type FormEvent, type React
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
+import { IconButton } from "@/components/ui/icon-button";
 import { RowActions } from "@/components/ui/row-actions";
 import { useFormatters } from "@/lib/format";
 import { formatTripDates } from "@/lib/trip-dates";
@@ -345,6 +346,22 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                       </p>
                     </div>
                     <RowActions
+                      pay={
+                        !isGroup && expense.status !== "paid"
+                          ? {
+                              label: t("markPaidLabel", { name: expense.description }),
+                              onClick: () => setPayment(expense, people[0]!.id),
+                            }
+                          : undefined
+                      }
+                      undoPay={
+                        !isGroup && expense.status === "paid"
+                          ? {
+                              label: t("markPendingLabel", { name: expense.description }),
+                              onClick: () => setPayment(expense, null),
+                            }
+                          : undefined
+                      }
                       edit={{ label: t("editExpense", { name: expense.description }), onClick: () => setEditingExpense(expense) }}
                       remove={{ label: t("deleteExpense", { name: expense.description }), onClick: () => setDeletingExpense(expense) }}
                     />
@@ -390,19 +407,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                         ))}
                       </select>
                     </div>
-                  ) : (
-                    <div className="mt-3">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setPayment(expense, expense.status === "paid" ? null : people[0]!.id)}
-                        aria-label={t(expense.status === "paid" ? "markPendingLabel" : "markPaidLabel", {
-                          name: expense.description,
-                        })}
-                      >
-                        {expense.status === "paid" ? t("markPending") : t("markPaid")}
-                      </Button>
-                    </div>
-                  )}
+                  ) : null}
                 </li>
               );
             })}
@@ -444,8 +449,9 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                         {t.rich("pays", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId), strong })}
                       </p>
                       <span className="font-semibold tabular-nums">{formatCop(transfer.amountMinor)}</span>
-                      <Button
-                        variant="secondary"
+                      <IconButton
+                        icon="check"
+                        tone="positive"
                         loading={pending}
                         onClick={() =>
                           run(() =>
@@ -457,10 +463,8 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                             }),
                           )
                         }
-                        aria-label={t("markAsPaidLabel", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId) })}
-                      >
-                        {t("markAsPaid")}
-                      </Button>
+                        label={t("markAsPaidLabel", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId) })}
+                      />
                     </li>
                   ))}
                 </ul>

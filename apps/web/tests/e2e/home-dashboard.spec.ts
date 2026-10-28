@@ -160,7 +160,7 @@ test("reminds which month is waiting to be loaded and links straight to it", asy
 test("shows the same dashboard in Spanish", async ({ page }) => {
   await signIn(page, OWNER.email);
   await page.goto("/?period=2020-03");
-  await page.locator("select[aria-label]:visible").selectOption({ label: "Español" });
+  await page.getByRole("radio", { name: "Español" }).click();
 
   await expect(page.getByRole("heading", { name: /Flujo del mes/ })).toBeVisible();
   await expect(page.getByTestId("flow-rate")).toContainText("50%");
