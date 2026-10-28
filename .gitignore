@@ -33,3 +33,5 @@ lerna-debug.log*
 .temp
 .tmp
 conection-vercel-neon-prostgress.txt
+.playwright-mcp/
+output/playwright/

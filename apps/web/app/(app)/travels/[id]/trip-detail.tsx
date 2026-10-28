@@ -18,6 +18,8 @@ import { useEffect, useMemo, useState, useTransition, type FormEvent, type React
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
+import { IconButton } from "@/components/ui/icon-button";
+import { RowActions } from "@/components/ui/row-actions";
 import { useFormatters } from "@/lib/format";
 import { formatTripDates } from "@/lib/trip-dates";
 import { useToday } from "@/lib/use-today";
@@ -190,7 +192,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
             <Icon name="pencil" width={18} height={18} />
             {t("edit")}
           </Button>
-          <Button variant="secondary" className="hover:text-clay" onClick={() => setDeletingTrip(true)} aria-label={t("deleteLabel")}>
+          <Button variant="secondary" onClick={() => setDeletingTrip(true)} aria-label={t("deleteLabel")}>
             <Icon name="trash" width={18} height={18} />
             {t("delete")}
           </Button>
@@ -343,22 +345,26 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                         {expense.status === "paid" ? t("paidStatus") : t("pendingStatus")}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      className="px-2.5"
-                      onClick={() => setEditingExpense(expense)}
-                      aria-label={t("editExpense", { name: expense.description })}
-                    >
-                      <Icon name="pencil" width={18} height={18} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="px-2.5 hover:text-clay"
-                      onClick={() => setDeletingExpense(expense)}
-                      aria-label={t("deleteExpense", { name: expense.description })}
-                    >
-                      <Icon name="trash" width={18} height={18} />
-                    </Button>
+                    <RowActions
+                      pay={
+                        !isGroup && expense.status !== "paid"
+                          ? {
+                              label: t("markPaidLabel", { name: expense.description }),
+                              onClick: () => setPayment(expense, people[0]!.id),
+                            }
+                          : undefined
+                      }
+                      undoPay={
+                        !isGroup && expense.status === "paid"
+                          ? {
+                              label: t("markPendingLabel", { name: expense.description }),
+                              onClick: () => setPayment(expense, null),
+                            }
+                          : undefined
+                      }
+                      edit={{ label: t("editExpense", { name: expense.description }), onClick: () => setEditingExpense(expense) }}
+                      remove={{ label: t("deleteExpense", { name: expense.description }), onClick: () => setDeletingExpense(expense) }}
+                    />
                   </div>
 
                   {isGroup ? (
@@ -401,19 +407,7 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                         ))}
                       </select>
                     </div>
-                  ) : (
-                    <div className="mt-3">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setPayment(expense, expense.status === "paid" ? null : people[0]!.id)}
-                        aria-label={t(expense.status === "paid" ? "markPendingLabel" : "markPaidLabel", {
-                          name: expense.description,
-                        })}
-                      >
-                        {expense.status === "paid" ? t("markPending") : t("markPaid")}
-                      </Button>
-                    </div>
-                  )}
+                  ) : null}
                 </li>
               );
             })}
@@ -455,8 +449,9 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                         {t.rich("pays", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId), strong })}
                       </p>
                       <span className="font-semibold tabular-nums">{formatCop(transfer.amountMinor)}</span>
-                      <Button
-                        variant="secondary"
+                      <IconButton
+                        icon="check"
+                        tone="positive"
                         loading={pending}
                         onClick={() =>
                           run(() =>
@@ -468,10 +463,8 @@ export function TripDetail({ trip, people, expenses: savedExpenses, settlements 
                             }),
                           )
                         }
-                        aria-label={t("markAsPaidLabel", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId) })}
-                      >
-                        {t("markAsPaid")}
-                      </Button>
+                        label={t("markAsPaidLabel", { from: nameOf(transfer.fromId), to: nameOf(transfer.toId) })}
+                      />
                     </li>
                   ))}
                 </ul>

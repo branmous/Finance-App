@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { RowActions } from "@/components/ui/row-actions";
 import { useFormatters } from "@/lib/format";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
@@ -115,25 +116,16 @@ export function IncomeView({ period, isCurrentPeriod, incomes, total }: Props) {
                   {item.note ? <p className="truncate text-sm text-paper-muted">{item.note}</p> : null}
                 </div>
                 <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
-                <Button
-                  variant="ghost"
-                  className="px-2.5"
-                  onClick={() => setEditing(item)}
-                  aria-label={t("edit", { type: typeLabel(item) })}
-                >
-                  <Icon name="pencil" width={18} height={18} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="px-2.5 hover:text-clay"
-                  onClick={() => {
-                    setDeleteError(null);
-                    setDeleting(item);
+                <RowActions
+                  edit={{ label: t("edit", { type: typeLabel(item) }), onClick: () => setEditing(item) }}
+                  remove={{
+                    label: t("delete", { type: typeLabel(item) }),
+                    onClick: () => {
+                      setDeleteError(null);
+                      setDeleting(item);
+                    },
                   }}
-                  aria-label={t("delete", { type: typeLabel(item) })}
-                >
-                  <Icon name="trash" width={18} height={18} />
-                </Button>
+                />
               </li>
             ))}
           </ul>

@@ -47,6 +47,54 @@ describe("expense repository", () => {
     });
   });
 
+  it("lists the payment info of the category and the debt link", async () => {
+    const { repo, categories, alice } = await setup();
+    const withLink = await categories.create(alice.id, {
+      ...categoryInput,
+      name: "Internet",
+      paymentInfo: "https://isp.example/pay",
+    });
+    await repo.create(alice.id, {
+      categoryId: withLink.id,
+      amountMinor: 90000,
+      period: "2026-09",
+      paidOn: null,
+      note: "",
+      parentId: null,
+    });
+
+    const [listed] = await repo.listByPeriod(alice.id, "2026-09");
+    expect(listed).toMatchObject({ paymentInfo: "https://isp.example/pay", debtId: null });
+  });
+
+  describe("markPaid", () => {
+    it("sets only the paid date of a pending expense", async () => {
+      const { repo, alice, input } = await setup();
+      const created = await repo.create(alice.id, { ...input, paidOn: null, note: "keep me" });
+
+      await expect(repo.markPaid(alice.id, created.id, "2026-10-05")).resolves.toBe(true);
+      const [listed] = await repo.listByPeriod(alice.id, "2026-09");
+      expect(listed).toMatchObject({ paidOn: "2026-10-05", amountMinor: input.amountMinor, note: "keep me" });
+    });
+
+    it("does not touch another user's expense or a missing one", async () => {
+      const { repo, alice, bob, input } = await setup();
+      const created = await repo.create(alice.id, { ...input, paidOn: null });
+
+      await expect(repo.markPaid(bob.id, created.id, "2026-10-05")).resolves.toBe(false);
+      await expect(repo.markPaid(alice.id, "00000000-0000-4000-8000-000000000000", "2026-10-05")).resolves.toBe(false);
+      const [listed] = await repo.listByPeriod(alice.id, "2026-09");
+      expect(listed?.paidOn).toBeNull();
+    });
+
+    it("leaves a linked child alone: it is paid with its parent", async () => {
+      const { repo, alice, input } = await setup();
+      const parent = await repo.create(alice.id, { ...input, paidOn: null });
+      const child = await repo.create(alice.id, { ...input, paidOn: null, parentId: parent.id });
+
+      await expect(repo.markPaid(alice.id, child.id, "2026-10-05")).resolves.toBe(false);
+    });
+  });
   it("files an expense under the month it belongs to, not the month it was paid", async () => {
     const { repo, alice, input } = await setup();
     await repo.create(alice.id, input); // September rent, paid in October

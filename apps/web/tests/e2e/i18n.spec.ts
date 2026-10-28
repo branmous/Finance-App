@@ -32,8 +32,8 @@ test.beforeAll(() => {
 });
 
 async function chooseLanguage(page: Page, name: "English" | "Español") {
-  // The selector exists in both the phone menu and the sidebar; only one of them is visible.
-  await page.locator('select[aria-label]:visible').selectOption({ label: name });
+  // The switcher exists in both the phone menu and the sidebar; only one of them is visible.
+  await page.getByRole("radio", { name }).click();
 }
 
 test("the login screen can be switched to Spanish and the choice survives a reload", async ({ page }) => {

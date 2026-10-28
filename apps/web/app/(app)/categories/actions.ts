@@ -12,24 +12,32 @@ export type CategoryActionResult =
   | { ok: true }
   | { ok: false; errors?: CategoryInputErrors; message?: ValidationError };
 
+/** Like {@link CategoryActionResult}, but a created category also reports its id so the caller can pick it. */
+export type CreateCategoryResult =
+  | { ok: true; id: string }
+  | { ok: false; errors?: CategoryInputErrors; message?: ValidationError };
+
 const NOT_FOUND = validationError("categoryNotFound");
 const DUPLICATE_NAME = validationError("duplicateCategoryName");
 const IN_USE = validationError("categoryInUse");
 
 function refresh() {
   revalidatePath("/categories");
+  // The expense form lists the user's categories, and can create one on the spot.
+  revalidatePath("/monthly-expenses");
   revalidatePath("/");
 }
 
-export async function createCategory(input: unknown): Promise<CategoryActionResult> {
+export async function createCategory(input: unknown): Promise<CreateCategoryResult> {
   const user = await getSessionUser();
   if (!user) return { ok: false, message: SESSION_EXPIRED };
 
   const parsed = validateCategoryInput(input);
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
 
+  let id: string;
   try {
-    await createCategoryRepository(getDb()).create(user.id, parsed.value);
+    ({ id } = await createCategoryRepository(getDb()).create(user.id, parsed.value));
   } catch (error) {
     if (error instanceof DuplicateCategoryNameError) {
       return { ok: false, errors: { name: DUPLICATE_NAME } };
@@ -37,7 +45,7 @@ export async function createCategory(input: unknown): Promise<CategoryActionResu
     throw error;
   }
   refresh();
-  return { ok: true };
+  return { ok: true, id };
 }
 
 export async function updateCategory(id: string, input: unknown): Promise<CategoryActionResult> {

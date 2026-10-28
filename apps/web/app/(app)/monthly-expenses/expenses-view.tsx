@@ -1,5 +1,6 @@
 "use client";
 
+import { isHttpUrl } from "@finance-app/core/categories";
 import { formatCop, shiftPeriod } from "@finance-app/core/expenses";
 import type { PeriodSummary } from "@finance-app/db";
 import { useTranslations } from "next-intl";
@@ -11,10 +12,12 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { RowActions } from "@/components/ui/row-actions";
 import { useFormatters } from "@/lib/format";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
-import { deleteExpense, unlinkExpense } from "./actions";
+import { setInstallmentPaid } from "../debts/actions";
+import { deleteExpense, markExpensePaid, unlinkExpense } from "./actions";
 import { BalanceCard } from "./balance-card";
 import { BulkImportDialog } from "./bulk-import-dialog";
 import { CopyExpensesDialog } from "./copy-expenses-dialog";
@@ -79,13 +82,24 @@ export function ExpensesView({
     });
   }
 
+  function markPaid(item: ExpenseItem) {
+    setListError(null);
+    startTransition(async () => {
+      const { upcomingDebt } = item;
+      const result = upcomingDebt
+        ? await setInstallmentPaid(upcomingDebt.debtId, upcomingDebt.period, true)
+        : await markExpensePaid(item.id);
+      if (!result.ok) setListError(message(result.message) ?? t("updateFailed"));
+    });
+  }
+
   function renderRow(item: ExpenseItem, parent?: ExpenseItem) {
     const linked = childrenOf(item.id);
     const linkedTotal = linked.reduce((sum, child) => sum + child.amountMinor, 0);
     return (
-      <div className={`flex items-center gap-4 py-3 ${parent ? "pl-6 sm:pl-12" : ""}`}>
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 py-3 sm:flex-nowrap ${parent ? "pl-6 sm:pl-12" : ""}`}>
         <CategoryBadge color={item.categoryColor} icon={item.categoryIcon} size={parent ? 32 : 40} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-32">
           <p className="truncate font-medium">{item.categoryName}</p>
           <p className="truncate text-sm text-paper-muted">
             {parent ? (
@@ -97,7 +111,11 @@ export function ExpensesView({
                 {t("pending")}
               </span>
             )}
-            {item.note ? ` · ${item.note}` : ""}
+            {item.upcomingDebt
+              ? ` · ${t("debtInstallmentNote", { name: item.note })}`
+              : item.note
+                ? ` · ${item.note}`
+                : ""}
           </p>
           {linked.length > 0 ? (
             <p className={`truncate text-xs ${linkedTotal > item.amountMinor ? "font-semibold text-clay" : "text-paper-muted"}`}>
@@ -107,36 +125,44 @@ export function ExpensesView({
           ) : null}
         </div>
         <span className="font-semibold tabular-nums">{formatCop(item.amountMinor)}</span>
-        {parent ? (
-          <Button
-            variant="ghost"
-            className="px-2.5 text-xs"
-            onClick={() => makeIndependent(item)}
-            loading={pending}
-            aria-label={t("makeIndependentLabel", { name: item.categoryName })}
-          >
-            {t("makeIndependent")}
-          </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          className="px-2.5"
-          onClick={() => setEditing(item)}
-          aria-label={t("edit", { name: item.categoryName })}
-        >
-          <Icon name="pencil" width={18} height={18} />
-        </Button>
-        <Button
-          variant="ghost"
-          className="px-2.5 hover:text-clay"
-          onClick={() => {
-            setDeleteError(null);
-            setDeleting(item);
-          }}
-          aria-label={t("delete", { name: item.categoryName })}
-        >
-          <Icon name="trash" width={18} height={18} />
-        </Button>
+        <RowActions
+          stacked
+          link={
+            isHttpUrl(item.paymentInfo)
+              ? { label: t("paymentLink", { name: item.categoryName }), href: item.paymentInfo }
+              : undefined
+          }
+          unlink={
+            parent
+              ? {
+                  label: t("makeIndependentLabel", { name: item.categoryName }),
+                  onClick: () => makeIndependent(item),
+                  loading: pending,
+                }
+              : undefined
+          }
+          pay={
+            !item.paidOn && !parent
+              ? { label: t("markPaid", { name: item.categoryName }), onClick: () => markPaid(item), loading: pending }
+              : undefined
+          }
+          edit={
+            item.upcomingDebt
+              ? undefined
+              : { label: t("edit", { name: item.categoryName }), onClick: () => setEditing(item) }
+          }
+          remove={
+            item.upcomingDebt
+              ? undefined
+              : {
+                  label: t("delete", { name: item.categoryName }),
+                  onClick: () => {
+                    setDeleteError(null);
+                    setDeleting(item);
+                  },
+                }
+          }
+        />
       </div>
     );
   }
@@ -282,7 +308,7 @@ export function ExpensesView({
         expense={editing ?? null}
         categories={categories}
         defaultPeriod={period}
-        parentCandidates={topLevel}
+        parentCandidates={topLevel.filter((item) => !item.upcomingDebt)}
         hasChildren={editingChildren > 0}
         onClose={() => setEditing(undefined)}
       />
@@ -291,7 +317,7 @@ export function ExpensesView({
         open={copying}
         sourcePeriod={shiftPeriod(period, -1)}
         sources={lastMonthExpenses}
-        existing={expenses}
+        existing={expenses.filter((item) => !item.upcomingDebt)}
         onClose={() => setCopying(false)}
       />
 

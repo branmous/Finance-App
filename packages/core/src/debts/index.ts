@@ -22,3 +22,5 @@ export type {
   DebtStatus,
   DebtValidationResult,
 } from "./debt";
+export { pendingInstallmentsForPeriod } from "./pending";
+export type { PendingDebtSource, PendingInstallment } from "./pending";

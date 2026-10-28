@@ -13,7 +13,7 @@ export function PeriodSelector({ period, previousPeriod }: { period: string; pre
   const later = shiftPeriod(period, 1);
   const hasLater = later <= currentPeriod();
   const linkClass =
-    "inline-flex size-9 items-center justify-center rounded-field border border-paper-line text-ink hover:bg-paper-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-leaf";
+    "inline-flex size-11 items-center justify-center rounded-field border border-paper-line text-ink hover:bg-paper-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-leaf";
 
   return (
     <nav aria-label={t("nav")} className="flex items-center gap-2">
@@ -28,7 +28,7 @@ export function PeriodSelector({ period, previousPeriod }: { period: string; pre
           <Icon name="chevronRight" width={18} height={18} />
         </Link>
       ) : (
-        <span aria-hidden="true" className="size-9" />
+        <span aria-hidden="true" className="size-11" />
       )}
     </nav>
   );

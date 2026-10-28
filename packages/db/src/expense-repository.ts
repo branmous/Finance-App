@@ -20,9 +20,13 @@ export type ExpenseWithCategory = {
   note: string;
   /** The expense this one was paid with, or null when it stands alone. */
   parentId: string | null;
+  /** The debt this expense is an installment of, or null. */
+  debtId: string | null;
   categoryName: string;
   categoryColor: string;
   categoryIcon: string;
+  /** The category's payment link or instructions; empty when it has none. */
+  paymentInfo: string;
 };
 
 export type PeriodSummary = { total: number; paid: number; pending: number };
@@ -140,9 +144,11 @@ export function createExpenseRepository(db: DbClient) {
           paidOn: expenses.paidOn,
           note: expenses.note,
           parentId: expenses.parentId,
+          debtId: expenses.debtId,
           categoryName: categories.name,
           categoryColor: categories.color,
           categoryIcon: categories.icon,
+          paymentInfo: categories.paymentInfo,
         })
         .from(expenses)
         .innerJoin(categories, eq(expenses.categoryId, categories.id))
@@ -290,6 +296,16 @@ export function createExpenseRepository(db: DbClient) {
         .where(and(eq(expenses.id, id), eq(expenses.userId, userId)))
         .returning();
       return row ?? null;
+    },
+
+    /** Sets only the paid date, so a pending expense can be paid without re-sending the whole form. */
+    async markPaid(userId: string, id: string, paidOn: string): Promise<boolean> {
+      const rows = await db
+        .update(expenses)
+        .set({ paidOn, updatedAt: new Date() })
+        .where(and(eq(expenses.id, id), eq(expenses.userId, userId), isNull(expenses.parentId)))
+        .returning();
+      return rows.length > 0;
     },
 
     /** Makes a child independent again; it then counts on its own in the month total. */

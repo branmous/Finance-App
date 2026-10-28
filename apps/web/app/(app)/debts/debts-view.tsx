@@ -18,6 +18,7 @@ import { CategoryBadge } from "@/components/ui/category-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { RowActions } from "@/components/ui/row-actions";
 import { intlLocale, useFormatters } from "@/lib/format";
 import { useValidationMessage } from "@/lib/use-validation-message";
 
@@ -304,27 +305,16 @@ export function DebtsView({ debts, categories, nowPeriod }: Props) {
                         </Button>
                       ) : null}
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        className="px-2.5"
-                        onClick={() => setEditing(debt)}
-                        aria-label={t("edit", { name: debt.name })}
-                      >
-                        <Icon name="pencil" width={18} height={18} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="px-2.5 hover:text-clay"
-                        onClick={() => {
+                    <RowActions
+                      edit={{ label: t("edit", { name: debt.name }), onClick: () => setEditing(debt) }}
+                      remove={{
+                        label: t("delete", { name: debt.name }),
+                        onClick: () => {
                           setDeleteError(null);
                           setDeleting(debt);
-                        }}
-                        aria-label={t("delete", { name: debt.name })}
-                      >
-                        <Icon name="trash" width={18} height={18} />
-                      </Button>
-                    </div>
+                        },
+                      }}
+                    />
                   </div>
                 </li>
               ))}
