@@ -99,11 +99,11 @@ function monthOf(offset: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/** Types part of the name in the category search box and picks the matching option. */
+/** Types part of the name in the category search box and picks the matching option (its name also carries the category type). */
 async function pickCategory(dialog: Locator, name: string) {
   const search = dialog.getByRole("combobox", { name: "Category" });
   await search.fill(name);
-  await dialog.getByRole("option", { name, exact: true }).click();
+  await dialog.getByRole("option", { name }).click();
   await expect(search).toHaveValue(name);
 }
 

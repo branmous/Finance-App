@@ -2,7 +2,7 @@
   "name": "finance-app",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": "24.22.1"
   },
   "scripts": {
     "build": "turbo run build",
